@@ -88,6 +88,18 @@ const proc = spawn("node", [
 // proc emits NDJSON events on stdout: tool_execution_start / _end / _error, exit
 ```
 
+`--tool` is optional. Omit it for a headless "does this extension even
+load" check -- the real use case being a package manager validating an
+extension before committing to install it, in a real isolated subprocess
+rather than assuming a clean `import` means anything under jiti:
+
+```ts
+const proc = spawn("node", [cli, "--extension", "/abs/path/to/candidate/index.ts"]);
+// emits exactly one of, then exits 0/1 to match:
+//   { type: "load_ok" }
+//   { type: "load_error", error: "..." }
+```
+
 ## What the harness stubs
 
 `ctx.ui.notify`, `sendUserMessage`, `registerCommand` handlers,

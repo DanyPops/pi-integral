@@ -14,16 +14,21 @@
  * Accepts a subset of Pi's own CLI args:
  *   --extension <path>    extension entry point to load
  *   --env KEY=VALUE       environment overrides (repeatable)
- *   --tool <name>         tool to invoke (required)
+ *   --tool <name>         tool to invoke. Optional: when omitted, this only
+ *                         validates that the extension loads and its factory
+ *                         runs without throwing -- a headless "does it load"
+ *                         check, e.g. before committing to a real install.
  *   --params <json>       tool params as JSON string (repeatable -- each
  *                         becomes one sequential invocation in the same
  *                         process/extension instance, e.g. for cache
- *                         round-trip tests)
+ *                         round-trip tests). Ignored when --tool is omitted.
  *
  * Emits NDJSON events on stdout matching Pi's own --mode json shape:
  *   { type: "tool_execution_start", toolName, args }
  *   { type: "tool_execution_end",   toolName, result }
  *   { type: "tool_execution_error", toolName, error }
+ *   { type: "load_ok" }                          -- --tool omitted, factory ran clean
+ *   { type: "load_error", error }                -- --tool omitted, factory threw
  *   { type: "exit", code }
  */
 
@@ -53,10 +58,6 @@ if (!extensionPath) {
 	process.stderr.write("--extension required\n");
 	process.exit(1);
 }
-if (!toolName) {
-	process.stderr.write("--tool required\n");
-	process.exit(1);
-}
 
 for (const [k, v] of Object.entries(envOverrides)) process.env[k] = v;
 
@@ -75,38 +76,69 @@ const jiti = createJiti(import.meta.url, { moduleCache: false, alias });
 
 const tools = new Map();
 
+let activeTools = [];
 const pi = {
 	registerTool({ name, execute }) {
 		tools.set(name, execute);
 	},
 	on() {},
 	registerCommand() {},
+	registerShortcut() {},
+	registerFlag() {},
+	registerProvider() {},
+	registerMessageRenderer() {},
+	sendUserMessage() {},
+	setActiveTools(names) {
+		activeTools = names;
+	},
+	getActiveTools: () => activeTools,
+	getAllTools: () => [...tools.keys()],
+	getCommands: () => [],
 	ui: { notify() {} },
 };
+
+function emit(obj) {
+	process.stdout.write(`${JSON.stringify(obj)}\n`);
+}
 
 let factory;
 try {
 	factory = await jiti.import(resolve(extensionPath), { default: true });
 } catch (err) {
-	process.stderr.write(`[mock-pi-cli] load error: ${err.message}\n`);
+	if (toolName) {
+		process.stderr.write(`[mock-pi-cli] load error: ${err.message}\n`);
+	} else {
+		emit({ type: "load_error", error: err?.message ?? String(err) });
+	}
 	process.exit(1);
 }
 
 if (typeof factory !== "function") {
-	process.stderr.write("[mock-pi-cli] extension did not export a default function\n");
+	const message = "extension did not export a default function";
+	if (toolName) process.stderr.write(`[mock-pi-cli] ${message}\n`);
+	else emit({ type: "load_error", error: message });
 	process.exit(1);
 }
 
-await factory(pi);
+try {
+	await factory(pi);
+} catch (err) {
+	const message = err?.message ?? String(err);
+	if (toolName) process.stderr.write(`[mock-pi-cli] load error: ${message}\n`);
+	else emit({ type: "load_error", error: message });
+	process.exit(1);
+}
+
+if (!toolName) {
+	// Load-only mode: the factory ran without throwing. Nothing to invoke.
+	emit({ type: "load_ok" });
+	process.exit(0);
+}
 
 const execute = tools.get(toolName);
 if (!execute) {
 	process.stderr.write(`[mock-pi-cli] tool not found: ${toolName}\n`);
 	process.exit(1);
-}
-
-function emit(obj) {
-	process.stdout.write(`${JSON.stringify(obj)}\n`);
 }
 
 for (const paramsJson of allParamsJson) {
