@@ -1,8 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadExtensionViaJiti } from "../src/extension-harness.ts";
-import { createExtensionHarness } from "../src/extension-harness.ts";
+import { createExtensionHarness, loadExtensionViaJiti } from "../src/extension-harness.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SAMPLE = join(__dirname, "fixtures/sample-extension.ts");

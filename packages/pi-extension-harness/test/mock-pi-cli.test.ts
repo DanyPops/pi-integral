@@ -14,8 +14,12 @@ function run(args: string[]): Promise<{ code: number | null; stdout: string; std
 		const proc = spawn("node", [CLI, ...args], { stdio: ["ignore", "pipe", "pipe"] });
 		let stdout = "";
 		let stderr = "";
-		proc.stdout.on("data", (chunk) => { stdout += chunk; });
-		proc.stderr.on("data", (chunk) => { stderr += chunk; });
+		proc.stdout.on("data", (chunk) => {
+			stdout += chunk;
+		});
+		proc.stderr.on("data", (chunk) => {
+			stderr += chunk;
+		});
 		proc.on("close", (code) => resolvePromise({ code, stdout, stderr }));
 	});
 }
@@ -64,7 +68,11 @@ describe("mock-pi-cli tool-invocation mode (--tool given) is unaffected by the l
 		expect(code).toBe(0);
 		// sample-extension.ts deliberately leaks a plain console.log line (for the
 		// in-process harness's own leak-detection tests) -- filter to real NDJSON.
-		const events = stdout.trim().split("\n").filter((line) => line.startsWith("{")).map((line) => JSON.parse(line));
+		const events = stdout
+			.trim()
+			.split("\n")
+			.filter((line) => line.startsWith("{"))
+			.map((line) => JSON.parse(line));
 		expect(events[0]).toMatchObject({ type: "tool_execution_start", toolName: "sample_tool" });
 		expect(events.at(-1)).toEqual({ type: "exit", code: 0 });
 	});

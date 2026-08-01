@@ -33,9 +33,16 @@
  *   await h.shutdown();
  */
 
-import type { ExecOptions, ExecResult } from "@earendil-works/pi-coding-agent";
+import type {
+	ExecOptions,
+	ExecResult,
+	ExtensionAPI,
+	ExtensionContext,
+	ExtensionFactory,
+	ExtensionHandler,
+	ToolDefinition,
+} from "@earendil-works/pi-coding-agent";
 import { JITI_NATIVE_MODULES } from "./jiti-native-modules.js";
-import type { ExtensionAPI, ExtensionContext, ExtensionFactory, ExtensionHandler, ToolDefinition } from "@earendil-works/pi-coding-agent";
 
 // ── Jiti loader ───────────────────────────────────────────────────────────────
 
@@ -56,7 +63,10 @@ import type { ExtensionAPI, ExtensionContext, ExtensionFactory, ExtensionHandler
  * @param nativeModules  Packages to load natively. Defaults to JITI_NATIVE_MODULES
  *                       (the production list).
  */
-export async function loadExtensionViaJiti(extensionPath: string, { nativeModules = JITI_NATIVE_MODULES }: { nativeModules?: string[] } = {}): Promise<ExtensionFactory> {
+export async function loadExtensionViaJiti(
+	extensionPath: string,
+	{ nativeModules = JITI_NATIVE_MODULES }: { nativeModules?: string[] } = {},
+): Promise<ExtensionFactory> {
 	const { createJiti } = (await import("jiti")) as typeof import("jiti");
 	const jiti = createJiti(`file://${extensionPath}`, { moduleCache: false, tryNative: false, nativeModules });
 	const factory = await jiti.import(extensionPath, { default: true });
@@ -71,6 +81,7 @@ export async function loadExtensionViaJiti(extensionPath: string, { nativeModule
 }
 
 import type { ModelRegistry } from "@earendil-works/pi-coding-agent";
+
 // The real sessionManager type isn't exported publicly; derived from
 // ExtensionContext's own field instead of a hand-maintained local alias, so
 // this stays correct across versions without tracking pi's internal type name.

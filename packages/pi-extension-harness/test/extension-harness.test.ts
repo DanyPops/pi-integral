@@ -89,10 +89,10 @@ describe("createExtensionHarness", () => {
 
 	it("emit() dispatches to every handler registered for that event and returns the last non-undefined result", async () => {
 		let calls = 0;
-		// biome-ignore lint: intentionally untyped pi for a test exercising an
-		// event name not part of the real ExtensionEvent union (emit() itself
-		// accepts any string, mirroring how a real Pi extension may listen to a
-		// custom message-driven event dispatched by another extension).
+		// pi: any -- exercising an event name not part of the real ExtensionEvent
+		// union (emit() itself accepts any string, mirroring how a real Pi
+		// extension may listen to a custom message-driven event dispatched by
+		// another extension).
 		const h = createExtensionHarness((pi: any) => {
 			pi.on("custom_event", () => {
 				calls++;

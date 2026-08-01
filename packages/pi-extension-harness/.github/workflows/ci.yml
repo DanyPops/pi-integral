@@ -19,6 +19,8 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
         timeout-minutes: 3
+      - run: bun run lint:ci
+        timeout-minutes: 3
       - run: bun x tsc --noEmit
         timeout-minutes: 3
       - run: bun test test

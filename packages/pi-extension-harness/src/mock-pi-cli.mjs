@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * mock-pi-cli.mjs — minimal Pi CLI stub for full production-fidelity E2E
  * tests, run as a real subprocess (not in-process like createExtensionHarness).
@@ -32,10 +33,10 @@
  *   { type: "exit", code }
  */
 
-import { createJiti } from "jiti";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
+import { createJiti } from "jiti";
 
 const args = process.argv.slice(2);
 const get = (flag) => {

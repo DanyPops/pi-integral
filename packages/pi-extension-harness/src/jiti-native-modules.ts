@@ -10,4 +10,11 @@
  * exported publicly by @earendil-works/pi-coding-agent as of this writing, so
  * this list is kept in sync manually. Small and stable in practice.
  */
-export const JITI_NATIVE_MODULES: string[] = ["jsdom", "lru-cache", "@asamuzakjp/css-color", "css-tree", "@asamuzakjp/dom-selector", "nwsapi"];
+export const JITI_NATIVE_MODULES: string[] = [
+	"jsdom",
+	"lru-cache",
+	"@asamuzakjp/css-color",
+	"css-tree",
+	"@asamuzakjp/dom-selector",
+	"nwsapi",
+];
