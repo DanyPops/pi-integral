@@ -1,0 +1,35 @@
+{
+	"name": "@danypops/pi-process-harness",
+	"version": "0.0.1",
+	"description": "Spawns real `pi` processes (and companion daemons) for integration tests that need a real AgentSession genuinely deciding to call a tool -- scripted via Pi's own first-party faux model provider, no live LLM call. The sibling of @danypops/pi-extension-harness for the multi-process case that package's in-process/jiti/mock-cli layers deliberately don't cover.",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+	},
+	"scripts": {
+		"build": "rm -rf dist && tsc -p tsconfig.build.json",
+		"test": "bun run build && bun test test",
+		"typecheck": "tsc --noEmit",
+		"format": "biome format --write .",
+		"lint": "biome check --write ."
+	},
+	"dependencies": {
+		"@earendil-works/pi-ai": "*"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": "*"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.6",
+		"@earendil-works/pi-coding-agent": "*",
+		"@types/node": "^22.0.0",
+		"bun-types": "latest",
+		"typebox": "*",
+		"typescript": "^5.9.2"
+	},
+	"files": ["src", "dist", "README.md", "LICENSE"],
+	"keywords": ["pi", "pi-extension", "testing", "test-harness", "integration-test"]
+}
