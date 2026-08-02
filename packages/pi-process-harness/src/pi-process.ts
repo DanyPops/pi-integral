@@ -4,12 +4,22 @@
  * `@danypops/pi-extension-harness`'s in-process/jiti/mock-cli layers can
  * give: something that genuinely *decides* to call a tool from a prompt,
  * not a test hand-feeding a tool name directly.
+ *
+ * Does not wrap `@earendil-works/pi-coding-agent`'s own published
+ * `RpcClient` wholesale: RpcClient owns its child process as a private
+ * field with no public pid, exitCode, exit event, or bounded-stderr
+ * surface at all, which this harness's own tests genuinely need (see
+ * isolation.test.ts). What WAS real duplication -- the JSONL wire-protocol
+ * encode/decode -- now lives in `rpc-protocol.ts` using RpcClient's own
+ * real `RpcCommand`/`AgentSessionEvent` types instead of a narrower
+ * hand-rolled reimplementation of them.
  */
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createLineSplitter, spawnManagedProcess } from "@danypops/process-support";
-import { encodeRpcCommand, type PiRpcCommand, type PiRpcEvent, parseRpcLine } from "./rpc-protocol.js";
+import type { AgentSessionEvent, RpcCommand } from "@earendil-works/pi-coding-agent";
+import { encodeRpcCommand, parseRpcLine } from "./rpc-protocol.js";
 
 export interface SpawnPiProcessOptions {
 	/** Defaults to "pi" on PATH. Override for a pinned binary or a fixture stand-in. */
@@ -44,7 +54,7 @@ export interface RealPiProcess {
 	abort(): void;
 	readonly stderr: string;
 	readonly exitCode: number | null;
-	onEvent(listener: (event: PiRpcEvent) => void): () => void;
+	onEvent(listener: (event: AgentSessionEvent) => void): () => void;
 	onExit(listener: (code: number | null) => void): () => void;
 	waitForExit(): Promise<number | null>;
 	dispose(): void;
@@ -52,10 +62,10 @@ export interface RealPiProcess {
 
 /** Waits until `predicate` is true of some already-seen event, or times out. Polls rather than requiring a caller-supplied resolver per event type. */
 export function waitForRpcEvent(
-	events: readonly PiRpcEvent[],
-	predicate: (event: PiRpcEvent) => boolean,
+	events: readonly AgentSessionEvent[],
+	predicate: (event: AgentSessionEvent) => boolean,
 	options: { timeoutMs?: number; pollIntervalMs?: number } = {},
-): Promise<PiRpcEvent> {
+): Promise<AgentSessionEvent> {
 	const timeoutMs = options.timeoutMs ?? 10_000;
 	const pollIntervalMs = options.pollIntervalMs ?? 10;
 	return new Promise((resolve, reject) => {
@@ -96,20 +106,22 @@ export function spawnRealPiProcess(options: SpawnPiProcessOptions = {}): RealPiP
 		env: { ...isolationEnv, ...options.env },
 	});
 
-	const eventListeners = new Set<(event: PiRpcEvent) => void>();
+	const eventListeners = new Set<(event: AgentSessionEvent) => void>();
 	const exitListeners = new Set<(code: number | null) => void>();
 
-	process.onStdout(
-		createLineSplitter((line) => {
-			const event = parseRpcLine(line);
-			if (event) for (const listener of eventListeners) listener(event);
-		}),
-	);
+	const lineSplitter = createLineSplitter((line) => {
+		const event = parseRpcLine(line);
+		if (event) for (const listener of eventListeners) listener(event);
+	});
+	process.onStdout((chunk) => lineSplitter.feed(chunk));
 	void process.waitForExit().then((code) => {
+		// A process's very last stdout write may not end in "\n" -- flush whatever line-splitter
+		// still has buffered so it isn't silently lost once the stream truly ends.
+		lineSplitter.flush();
 		for (const listener of exitListeners) listener(code);
 	});
 
-	function send(rpcCommand: PiRpcCommand): void {
+	function send(rpcCommand: RpcCommand): void {
 		process.write(encodeRpcCommand(rpcCommand));
 	}
 

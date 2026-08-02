@@ -14,4 +14,5 @@ export {
 	SCRIPT_ENV_VAR,
 } from "./faux-script.js";
 export { type RealPiProcess, type SpawnPiProcessOptions, spawnRealPiProcess, waitForRpcEvent } from "./pi-process.js";
-export type { PiRpcCommand, PiRpcEvent } from "./rpc-protocol.js";
+export { resolvePiCliPath } from "./resolve-pi-cli-path.js";
+export { extractMessageText } from "./rpc-protocol.js";
