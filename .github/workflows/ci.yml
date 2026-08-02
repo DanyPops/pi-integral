@@ -21,5 +21,8 @@ jobs:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
       - run: bun install
+      # pi-process-harness spawns a real `pi` binary on PATH -- never previously exercised in CI
+      # at all (this package had no remote/CI configured before joining this monorepo).
+      - run: bun add --global @earendil-works/pi-coding-agent
       - run: bun test
       - run: bun run typecheck

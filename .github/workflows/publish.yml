@@ -57,6 +57,8 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
+      # pi-process-harness spawns a real `pi` binary on PATH.
+      - run: bun add --global @earendil-works/pi-coding-agent
       - run: bun run lint
       - run: bun run typecheck
       - run: bun test
