@@ -5,16 +5,11 @@
  * give: something that genuinely *decides* to call a tool from a prompt,
  * not a test hand-feeding a tool name directly.
  */
-import { type ChildProcessByStdio, spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Readable, Writable } from "node:stream";
-import { StringDecoder } from "node:string_decoder";
+import { createLineSplitter, spawnManagedProcess } from "@danypops/process-support";
 import { encodeRpcCommand, type PiRpcCommand, type PiRpcEvent, parseRpcLine } from "./rpc-protocol.js";
-
-const MAX_STDERR_CHARS = 8_000;
-const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 2_000;
 
 export interface SpawnPiProcessOptions {
 	/** Defaults to "pi" on PATH. Override for a pinned binary or a fixture stand-in. */
@@ -86,59 +81,41 @@ export function spawnRealPiProcess(options: SpawnPiProcessOptions = {}): RealPiP
 
 	let ownedHomeDir: string | undefined;
 	let homeDir: string | undefined;
-	const baseEnv: Record<string, string | undefined> = { ...process.env };
+	const isolationEnv: Record<string, string> = {};
 	if (options.isolatedHome !== false) {
 		homeDir = options.isolatedHome ?? mkdtempSync(join(tmpdir(), "pi-process-harness-home-"));
 		if (options.isolatedHome === undefined) ownedHomeDir = homeDir;
-		baseEnv["HOME"] = homeDir;
-		baseEnv["PI_CODING_AGENT_DIR"] = join(homeDir, ".pi", "agent");
+		isolationEnv["HOME"] = homeDir;
+		isolationEnv["PI_CODING_AGENT_DIR"] = join(homeDir, ".pi", "agent");
 	}
 
-	const child: ChildProcessByStdio<Writable, Readable, Readable> = spawn(bin, args, {
-		cwd: options.cwd,
-		env: { ...baseEnv, ...options.env },
-		stdio: ["pipe", "pipe", "pipe"],
+	const process = spawnManagedProcess({
+		command: bin,
+		args,
+		...(options.cwd !== undefined && { cwd: options.cwd }),
+		env: { ...isolationEnv, ...options.env },
 	});
 
 	const eventListeners = new Set<(event: PiRpcEvent) => void>();
 	const exitListeners = new Set<(code: number | null) => void>();
-	let stderr = "";
-	let exitPromiseResolve: ((code: number | null) => void) | undefined;
-	const exitPromise = new Promise<number | null>((resolve) => {
-		exitPromiseResolve = resolve;
-	});
 
-	const decoder = new StringDecoder("utf8");
-	let buffer = "";
-	child.stdout.on("data", (chunk: Buffer) => {
-		buffer += decoder.write(chunk);
-		for (let index = buffer.indexOf("\n"); index !== -1; index = buffer.indexOf("\n")) {
-			let line = buffer.slice(0, index);
-			buffer = buffer.slice(index + 1);
-			if (line.endsWith("\r")) line = line.slice(0, -1);
-			if (!line) continue;
+	process.onStdout(
+		createLineSplitter((line) => {
 			const event = parseRpcLine(line);
 			if (event) for (const listener of eventListeners) listener(event);
-		}
-	});
-
-	child.stderr.on("data", (chunk: Buffer) => {
-		stderr = (stderr + chunk.toString("utf8")).slice(-MAX_STDERR_CHARS);
-	});
-
-	child.on("exit", (code) => {
+		}),
+	);
+	void process.waitForExit().then((code) => {
 		for (const listener of exitListeners) listener(code);
-		exitPromiseResolve?.(code);
 	});
 
 	function send(rpcCommand: PiRpcCommand): void {
-		if (child.exitCode !== null) return;
-		child.stdin.write(encodeRpcCommand(rpcCommand));
+		process.write(encodeRpcCommand(rpcCommand));
 	}
 
 	return {
 		get pid() {
-			return child.pid;
+			return process.pid;
 		},
 		homeDir,
 		sendPrompt(message) {
@@ -148,10 +125,10 @@ export function spawnRealPiProcess(options: SpawnPiProcessOptions = {}): RealPiP
 			send({ type: "abort" });
 		},
 		get stderr() {
-			return stderr;
+			return process.stderr;
 		},
 		get exitCode() {
-			return child.exitCode;
+			return process.exitCode;
 		},
 		onEvent(listener) {
 			eventListeners.add(listener);
@@ -162,26 +139,14 @@ export function spawnRealPiProcess(options: SpawnPiProcessOptions = {}): RealPiP
 			return () => exitListeners.delete(listener);
 		},
 		waitForExit() {
-			return exitPromise;
+			return process.waitForExit();
 		},
 		dispose() {
 			eventListeners.clear();
 			const cleanupHomeDir = (): void => {
 				if (ownedHomeDir) rmSync(ownedHomeDir, { recursive: true, force: true });
 			};
-			if (child.exitCode !== null) {
-				cleanupHomeDir();
-				return;
-			}
-			child.kill("SIGTERM");
-			const timer = setTimeout(() => {
-				if (child.exitCode === null) child.kill("SIGKILL");
-			}, GRACEFUL_SHUTDOWN_TIMEOUT_MS);
-			timer.unref();
-			child.once("exit", () => {
-				clearTimeout(timer);
-				cleanupHomeDir();
-			});
+			void process.dispose().then(cleanupHomeDir);
 		},
 	};
 }

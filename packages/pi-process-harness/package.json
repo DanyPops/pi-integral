@@ -16,6 +16,7 @@
 		"format": "biome format --write ."
 	},
 	"dependencies": {
+		"@danypops/process-support": "workspace:*",
 		"@earendil-works/pi-ai": "*"
 	},
 	"peerDependencies": {

@@ -1,0 +1,25 @@
+{
+	"name": "@danypops/process-support",
+	"version": "0.1.0",
+	"description": "Internal shared process-spawning primitives for pi-testing's harnesses: bounded stderr capture, graceful-then-forceful shutdown, and NDJSON/line-buffered stdout parsing. Not Pi-specific -- extracted from real, provable duplication between pi-process-harness's spawnRealPiProcess and spawnCompanionDaemon.",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"test": "bun test test",
+		"typecheck": "tsc --noEmit",
+		"format": "biome format --write ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.6",
+		"@types/node": "^22.0.0",
+		"bun-types": "latest",
+		"typescript": "^5.9.2"
+	},
+	"files": ["src", "dist", "LICENSE"]
+}

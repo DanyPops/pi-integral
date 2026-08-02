@@ -3,15 +3,13 @@
  * process under test (e.g. Epi, or any other Vehicle-backed daemon) --
  * generic, no Pi-specific or Vehicle-specific knowledge. Readiness is the
  * caller's own concern (poll a health endpoint, a handle file, a port),
- * this module only owns the poll loop and the spawn/shutdown mechanics.
+ * this module only owns the poll loop on top of @danypops/process-support's
+ * shared spawn/stderr/shutdown primitive.
  */
-import { type ChildProcessByStdio, spawn } from "node:child_process";
-import type { Readable } from "node:stream";
+import { type ManagedProcess, spawnManagedProcess } from "@danypops/process-support";
 
-const MAX_STDERR_CHARS = 8_000;
 const DEFAULT_READY_TIMEOUT_MS = 10_000;
 const DEFAULT_POLL_INTERVAL_MS = 100;
-const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 2_000;
 
 export interface SpawnCompanionDaemonOptions {
 	readonly command: string;
@@ -49,23 +47,29 @@ async function pollUntilReady(isReady: () => boolean | Promise<boolean>, timeout
 	}
 }
 
+function asCompanionDaemon(process: ManagedProcess): CompanionDaemon {
+	return {
+		get pid() {
+			return process.pid;
+		},
+		get stderr() {
+			return process.stderr;
+		},
+		get exitCode() {
+			return process.exitCode;
+		},
+		waitForExit: () => process.waitForExit(),
+		dispose: () => process.dispose(),
+	};
+}
+
 export async function spawnCompanionDaemon(options: SpawnCompanionDaemonOptions): Promise<CompanionDaemon> {
-	const child: ChildProcessByStdio<null, Readable, Readable> = spawn(options.command, [...(options.args ?? [])], {
-		cwd: options.cwd,
-		env: options.env ? { ...process.env, ...options.env } : process.env,
-		stdio: ["ignore", "pipe", "pipe"],
+	const process = spawnManagedProcess({
+		command: options.command,
+		...(options.args !== undefined && { args: options.args }),
+		...(options.cwd !== undefined && { cwd: options.cwd }),
+		...(options.env !== undefined && { env: options.env }),
 	});
-
-	let stderr = "";
-	child.stderr.on("data", (chunk: Buffer) => {
-		stderr = (stderr + chunk.toString("utf8")).slice(-MAX_STDERR_CHARS);
-	});
-
-	let exitPromiseResolve: ((code: number | null) => void) | undefined;
-	const exitPromise = new Promise<number | null>((resolve) => {
-		exitPromiseResolve = resolve;
-	});
-	child.on("exit", (code) => exitPromiseResolve?.(code));
 
 	try {
 		await pollUntilReady(
@@ -74,32 +78,9 @@ export async function spawnCompanionDaemon(options: SpawnCompanionDaemonOptions)
 			options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS,
 		);
 	} catch (error) {
-		if (child.exitCode === null) child.kill("SIGKILL");
+		if (!process.hasExited) await process.dispose();
 		throw error;
 	}
 
-	return {
-		get pid() {
-			return child.pid;
-		},
-		get stderr() {
-			return stderr;
-		},
-		get exitCode() {
-			return child.exitCode;
-		},
-		waitForExit() {
-			return exitPromise;
-		},
-		async dispose() {
-			if (child.exitCode !== null) return;
-			child.kill("SIGTERM");
-			const timer = setTimeout(() => {
-				if (child.exitCode === null) child.kill("SIGKILL");
-			}, GRACEFUL_SHUTDOWN_TIMEOUT_MS);
-			timer.unref();
-			await exitPromise;
-			clearTimeout(timer);
-		},
-	};
+	return asCompanionDaemon(process);
 }
