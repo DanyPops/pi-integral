@@ -1,17 +1,26 @@
 {
 	"name": "@danypops/process-support",
 	"version": "0.1.0",
-	"description": "Internal shared process-spawning primitives for pi-testing's harnesses: bounded stderr capture, graceful-then-forceful shutdown, and NDJSON/line-buffered stdout parsing. Not Pi-specific -- extracted from real, provable duplication between pi-process-harness's spawnRealPiProcess and spawnCompanionDaemon.",
-	"private": true,
+	"description": "Shared process-spawning primitives: bounded stderr capture, graceful-then-forceful (SIGTERM-then-SIGKILL) shutdown, and NDJSON/line-buffered stdout parsing. Not Pi-specific -- extracted from real duplication between pi-process-harness's spawnRealPiProcess and spawnCompanionDaemon.",
 	"license": "MIT",
 	"type": "module",
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"exports": {
-		".": "./src/index.ts"
+		".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/DanyPops/pi-testing.git",
+		"directory": "packages/process-support"
+	},
+	"homepage": "https://github.com/DanyPops/pi-testing/tree/main/packages/process-support#readme",
+	"bugs": {
+		"url": "https://github.com/DanyPops/pi-testing/issues"
 	},
 	"scripts": {
-		"test": "bun test test",
+		"build": "rm -rf dist && tsc -p tsconfig.build.json",
+		"test": "bun run build && bun test test",
 		"typecheck": "tsc --noEmit",
 		"format": "biome format --write ."
 	},
@@ -21,5 +30,6 @@
 		"bun-types": "latest",
 		"typescript": "^5.9.2"
 	},
-	"files": ["src", "dist", "LICENSE"]
+	"files": ["src", "dist", "README.md", "LICENSE"],
+	"keywords": ["process", "subprocess", "spawn", "shutdown", "ndjson"]
 }

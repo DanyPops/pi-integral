@@ -5,9 +5,12 @@ name: Publish packages
 # for this against its own former standalone repo (org=DanyPops repo=pi-extension-harness
 # workflow=publish.yml) -- moving it here requires updating that trusted-publisher config on
 # npmjs.com to repo=pi-testing, workflow=publish.yml (a manual, npmjs.com-website-only step, not
-# something this workflow or any CLI can do). @danypops/pi-process-harness has never been
-# published; its own trusted publisher must be configured (or the package created) before its
-# first tag push can succeed here either -- ENEEDAUTH otherwise, not a silent skip.
+# something this workflow or any CLI can do). @danypops/pi-process-harness, @danypops/process-support,
+# and @danypops/pi-tui-harness have never been published; each one's own trusted publisher must be
+# configured (or the package created) before its first tag push can succeed here either --
+# ENEEDAUTH otherwise, not a silent skip. process-support is a REAL runtime dependency of
+# pi-process-harness (not merely a dev-time convenience) -- it must be published, not left private,
+# or a real npm install of pi-process-harness gets an unresolvable import.
 
 on:
   push:
@@ -15,6 +18,7 @@ on:
       - "pi-extension-harness-v*"
       - "pi-process-harness-v*"
       - "pi-tui-harness-v*"
+      - "process-support-v*"
 
 permissions:
   id-token: write # Required for OIDC
@@ -42,6 +46,10 @@ jobs:
             pi-tui-harness-v*)
               package_dir="packages/pi-tui-harness"
               tag_version="${GITHUB_REF_NAME#pi-tui-harness-v}"
+              ;;
+            process-support-v*)
+              package_dir="packages/process-support"
+              tag_version="${GITHUB_REF_NAME#process-support-v}"
               ;;
             *)
               echo "Unsupported release tag: $GITHUB_REF_NAME" >&2

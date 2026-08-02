@@ -15,8 +15,17 @@
 		"typecheck": "tsc --noEmit",
 		"format": "biome format --write ."
 	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/DanyPops/pi-testing.git",
+		"directory": "packages/pi-process-harness"
+	},
+	"homepage": "https://github.com/DanyPops/pi-testing/tree/main/packages/pi-process-harness#readme",
+	"bugs": {
+		"url": "https://github.com/DanyPops/pi-testing/issues"
+	},
 	"dependencies": {
-		"@danypops/process-support": "workspace:*",
+		"@danypops/process-support": "^0.1.0",
 		"@earendil-works/pi-ai": "*"
 	},
 	"peerDependencies": {
