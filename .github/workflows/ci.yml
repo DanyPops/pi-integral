@@ -24,5 +24,8 @@ jobs:
       # pi-process-harness spawns a real `pi` binary on PATH -- never previously exercised in CI
       # at all (this package had no remote/CI configured before joining this monorepo).
       - run: bun add --global @earendil-works/pi-coding-agent
+      # process-support is a real runtime dependency of pi-process-harness, resolved via its
+      # dist/ build output -- must exist before anything that imports it can test or typecheck.
+      - run: bun run build
       - run: bun test
       - run: bun run typecheck

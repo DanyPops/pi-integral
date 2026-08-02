@@ -4,6 +4,7 @@
 	"type": "module",
 	"workspaces": ["packages/*"],
 	"scripts": {
+		"build": "bun run --filter '@danypops/process-support' build && bun run --filter '*' build",
 		"test": "bun test",
 		"typecheck": "bun run --filter '*' typecheck",
 		"lint": "biome check . && eslint packages/*/src"
