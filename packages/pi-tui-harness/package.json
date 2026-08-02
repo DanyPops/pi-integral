@@ -1,0 +1,42 @@
+{
+	"name": "@danypops/pi-tui-harness",
+	"version": "0.0.1",
+	"description": "Tests real @earendil-works/pi-tui Component instances without hand-rolled ANSI-stripping regexes: named-key input helpers, and a real VT state machine (@xterm/headless) for structured cell/plain-text assertions and golden-file snapshots -- Ghostty's libghostty-vt testing philosophy applied to Pi's own TUI layer.",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/DanyPops/pi-testing.git",
+		"directory": "packages/pi-tui-harness"
+	},
+	"homepage": "https://github.com/DanyPops/pi-testing/tree/main/packages/pi-tui-harness#readme",
+	"bugs": {
+		"url": "https://github.com/DanyPops/pi-testing/issues"
+	},
+	"scripts": {
+		"build": "rm -rf dist && tsc -p tsconfig.build.json",
+		"test": "bun run build && bun test test",
+		"typecheck": "tsc --noEmit",
+		"format": "biome format --write ."
+	},
+	"dependencies": {
+		"@xterm/headless": "^6.0.0"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-tui": "*"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.6",
+		"@earendil-works/pi-tui": "*",
+		"@types/node": "^22.0.0",
+		"bun-types": "latest",
+		"typescript": "^5.9.2"
+	},
+	"files": ["src", "dist", "README.md", "LICENSE"],
+	"keywords": ["pi", "pi-tui", "testing", "test-harness", "terminal", "vt100", "snapshot-testing"]
+}
