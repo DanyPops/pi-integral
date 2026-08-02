@@ -1,0 +1,80 @@
+name: Publish packages
+
+# Trusted publishing (OIDC): no long-lived npm tokens. npm CLI detects the OIDC environment
+# automatically (requires npm >= 11.5.1). @danypops/pi-extension-harness was already configured
+# for this against its own former standalone repo (org=DanyPops repo=pi-extension-harness
+# workflow=publish.yml) -- moving it here requires updating that trusted-publisher config on
+# npmjs.com to repo=pi-testing, workflow=publish.yml (a manual, npmjs.com-website-only step, not
+# something this workflow or any CLI can do). @danypops/pi-process-harness has never been
+# published; its own trusted publisher must be configured (or the package created) before its
+# first tag push can succeed here either -- ENEEDAUTH otherwise, not a silent skip.
+
+on:
+  push:
+    tags:
+      - "pi-extension-harness-v*"
+      - "pi-process-harness-v*"
+      - "pi-tui-harness-v*"
+
+permissions:
+  id-token: write # Required for OIDC
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - id: package
+        name: Match tag to package version
+        shell: bash
+        run: |
+          case "$GITHUB_REF_NAME" in
+            pi-extension-harness-v*)
+              package_dir="packages/pi-extension-harness"
+              tag_version="${GITHUB_REF_NAME#pi-extension-harness-v}"
+              ;;
+            pi-process-harness-v*)
+              package_dir="packages/pi-process-harness"
+              tag_version="${GITHUB_REF_NAME#pi-process-harness-v}"
+              ;;
+            pi-tui-harness-v*)
+              package_dir="packages/pi-tui-harness"
+              tag_version="${GITHUB_REF_NAME#pi-tui-harness-v}"
+              ;;
+            *)
+              echo "Unsupported release tag: $GITHUB_REF_NAME" >&2
+              exit 1
+              ;;
+          esac
+          package_version="$(node -p "require('./$package_dir/package.json').version")"
+          if [[ "$tag_version" != "$package_version" ]]; then
+            echo "Tag version $tag_version does not match $package_dir version $package_version" >&2
+            exit 1
+          fi
+          echo "dir=$package_dir" >> "$GITHUB_OUTPUT"
+
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun test
+
+      - name: Build the tagged package
+        working-directory: ${{ steps.package.outputs.dir }}
+        run: bun run build
+
+      # npm CLI only for the publish step (trusted publishing needs >= 11.5.1). NO registry-url
+      # here: it makes setup-node write an .npmrc with an empty NODE_AUTH_TOKEN line, which
+      # shadows OIDC auto-detection and breaks trusted publishing with a 404.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - run: npm install -g npm@latest && npm --version
+
+      - name: Publish
+        working-directory: ${{ steps.package.outputs.dir }}
+        run: npm publish --access public

@@ -13,8 +13,7 @@
 		"build": "rm -rf dist && tsc -p tsconfig.build.json",
 		"test": "bun run build && bun test test",
 		"typecheck": "tsc --noEmit",
-		"format": "biome format --write .",
-		"lint": "biome check --write ."
+		"format": "biome format --write ."
 	},
 	"dependencies": {
 		"@earendil-works/pi-ai": "*"
