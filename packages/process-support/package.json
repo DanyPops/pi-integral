@@ -11,12 +11,12 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/DanyPops/pi-integration-kit.git",
+		"url": "git+https://github.com/DanyPops/pi-integral.git",
 		"directory": "packages/process-support"
 	},
-	"homepage": "https://github.com/DanyPops/pi-integration-kit/tree/main/packages/process-support#readme",
+	"homepage": "https://github.com/DanyPops/pi-integral/tree/main/packages/process-support#readme",
 	"bugs": {
-		"url": "https://github.com/DanyPops/pi-integration-kit/issues"
+		"url": "https://github.com/DanyPops/pi-integral/issues"
 	},
 	"scripts": {
 		"build": "rm -rf dist && tsc -p tsconfig.build.json",

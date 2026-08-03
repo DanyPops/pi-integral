@@ -1,23 +1,18 @@
 name: Publish packages
 
 # Trusted publishing (OIDC): no long-lived npm tokens. npm CLI detects the OIDC environment
-# automatically (requires npm >= 11.5.1). @danypops/pi-extension-harness was already configured
-# for this against its own former standalone repo (org=DanyPops repo=pi-extension-harness
-# workflow=publish.yml), then against this repo under its former name (repo=pi-testing) --
-# the repo was since renamed to pi-integration-kit, so npm's trusted-publisher config must be
-# updated again to repo=pi-integration-kit, workflow=publish.yml (a manual, npmjs.com-website-only
-# step, not something this workflow or any CLI can do). @danypops/pi-process-harness, @danypops/process-support,
-# and @danypops/pi-tui-harness have never been published; each one's own trusted publisher must be
-# configured (or the package created) before its first tag push can succeed here either --
-# ENEEDAUTH otherwise, not a silent skip. process-support is a REAL runtime dependency of
-# pi-process-harness (not merely a dev-time convenience) -- it must be published, not left private,
-# or a real npm install of pi-process-harness gets an unresolvable import.
+# automatically (requires npm >= 11.5.1). Every package's npm trusted publisher must name
+# org=DanyPops, repo=pi-integral, workflow=publish.yml. This is a manual npmjs.com step; the
+# workflow cannot configure it. A package that has never been published must also be created
+# before its first tag push, or publishing fails with ENEEDAUTH. process-support is a runtime
+# dependency of pi-process-harness, so it must be published before pi-process-harness.
 
 on:
   push:
     tags:
       - "pi-extension-harness-v*"
       - "pi-process-harness-v*"
+      - "pi-rpc-protocol-v*"
       - "pi-tui-harness-v*"
       - "process-support-v*"
 
@@ -43,6 +38,10 @@ jobs:
             pi-process-harness-v*)
               package_dir="packages/pi-process-harness"
               tag_version="${GITHUB_REF_NAME#pi-process-harness-v}"
+              ;;
+            pi-rpc-protocol-v*)
+              package_dir="packages/pi-rpc-protocol"
+              tag_version="${GITHUB_REF_NAME#pi-rpc-protocol-v}"
               ;;
             pi-tui-harness-v*)
               package_dir="packages/pi-tui-harness"

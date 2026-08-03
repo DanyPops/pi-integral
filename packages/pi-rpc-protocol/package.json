@@ -1,0 +1,37 @@
+{
+	"name": "@danypops/pi-rpc-protocol",
+	"version": "0.0.1",
+	"description": "A small, dependency-free parser/encoder for the subset of Pi's documented RPC protocol needed by clients speaking to a pi --mode rpc process.",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+	},
+	"scripts": {
+		"build": "rm -rf dist && tsc -p tsconfig.build.json",
+		"test": "bun run build && bun test test",
+		"typecheck": "tsc --noEmit",
+		"format": "biome format --write ."
+	},
+	"devDependencies": {
+		"@types/node": "^22.0.0",
+		"bun-types": "latest",
+		"typescript": "^5.9.2"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/DanyPops/pi-integral.git",
+		"directory": "packages/pi-rpc-protocol"
+	},
+	"homepage": "https://github.com/DanyPops/pi-integral/tree/main/packages/pi-rpc-protocol#readme",
+	"bugs": {
+		"url": "https://github.com/DanyPops/pi-integral/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": ["src", "dist", "README.md", "LICENSE"],
+	"keywords": ["pi", "pi-extension", "rpc", "jsonl", "protocol"]
+}

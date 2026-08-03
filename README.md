@@ -1,4 +1,4 @@
-# pi-integration-kit
+# pi-integral
 
 Test harnesses for [Pi](https://pi.dev) extensions, agent sessions, and TUI components, at
 several layers of fidelity: in-process (fast, hermetic), real subprocess (a genuine agent loop),
@@ -12,6 +12,8 @@ and real terminal rendering.
 - **[`packages/pi-process-harness`](packages/pi-process-harness)** — spawns a real `pi` process
   (and companion daemons) for integration tests that need a genuine agent loop deciding, on its
   own, to call a tool — scripted via Pi's own first-party faux model provider, no live LLM call.
+- **[`packages/pi-rpc-protocol`](packages/pi-rpc-protocol)** — dependency-free JSONL parsing and
+  encoding for clients that speak to `pi --mode rpc` directly.
 - **[`packages/pi-tui-harness`](packages/pi-tui-harness)** — tests real `@earendil-works/pi-tui`
   `Component` instances: named-key input helpers, and a real headless VT state machine
   (`@xterm/headless`) for structured cell/plain-text assertions plus golden-file snapshots,

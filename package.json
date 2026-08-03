@@ -1,5 +1,5 @@
 {
-	"name": "pi-integration-kit-workspace",
+	"name": "pi-integral-workspace",
 	"private": true,
 	"type": "module",
 	"workspaces": ["packages/*"],
@@ -11,7 +11,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/DanyPops/pi-integration-kit.git"
+		"url": "git+https://github.com/DanyPops/pi-integral.git"
 	},
 	"license": "MIT",
 	"devDependencies": {

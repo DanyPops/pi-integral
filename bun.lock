@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "pi-testing-workspace",
+      "name": "pi-integral-workspace",
       "devDependencies": {
         "@biomejs/biome": "^2.5.6",
         "eslint": "^10.8.0",
@@ -54,6 +54,15 @@
       },
       "peerDependencies": {
         "@earendil-works/pi-coding-agent": "*",
+      },
+    },
+    "packages/pi-rpc-protocol": {
+      "name": "@danypops/pi-rpc-protocol",
+      "version": "0.0.1",
+      "devDependencies": {
+        "@types/node": "^22.0.0",
+        "bun-types": "latest",
+        "typescript": "^5.9.2",
       },
     },
     "packages/pi-tui-harness": {
@@ -161,6 +170,8 @@
     "@danypops/pi-extension-harness": ["@danypops/pi-extension-harness@workspace:packages/pi-extension-harness"],
 
     "@danypops/pi-process-harness": ["@danypops/pi-process-harness@workspace:packages/pi-process-harness"],
+
+    "@danypops/pi-rpc-protocol": ["@danypops/pi-rpc-protocol@workspace:packages/pi-rpc-protocol"],
 
     "@danypops/pi-tui-harness": ["@danypops/pi-tui-harness@workspace:packages/pi-tui-harness"],
 
