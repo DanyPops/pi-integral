@@ -16,3 +16,9 @@ export {
 export { type RealPiProcess, type SpawnPiProcessOptions, spawnRealPiProcess, waitForRpcEvent } from "./pi-process.js";
 export { resolvePiCliPath } from "./resolve-pi-cli-path.js";
 export { extractMessageText } from "./rpc-protocol.js";
+export {
+	type CliCompletion,
+	CliOutputLimitError,
+	type RunCliToCompletionOptions,
+	runCliToCompletion,
+} from "./run-cli-to-completion.js";
