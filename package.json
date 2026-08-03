@@ -1,5 +1,5 @@
 {
-	"name": "pi-testing-workspace",
+	"name": "pi-integration-kit-workspace",
 	"private": true,
 	"type": "module",
 	"workspaces": ["packages/*"],
@@ -11,7 +11,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/DanyPops/pi-testing.git"
+		"url": "git+https://github.com/DanyPops/pi-integration-kit.git"
 	},
 	"license": "MIT",
 	"devDependencies": {

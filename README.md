@@ -1,4 +1,4 @@
-# pi-testing
+# pi-integration-kit
 
 Test harnesses for [Pi](https://pi.dev) extensions, agent sessions, and TUI components, at
 several layers of fidelity: in-process (fast, hermetic), real subprocess (a genuine agent loop),
