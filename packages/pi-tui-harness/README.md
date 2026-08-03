@@ -20,6 +20,11 @@ Three layers, in order of speed and coverage:
    frame. "One frame in, one frame out": tightly control the input state,
    run one render pass, diff the result against a known-good copy.
 
+`runMultiSelectViewportScenario` supplies the thin production regression path
+for a four-row multi-select: move to the fifth row, toggle it twice, then move
+back to the first row. Component owners keep navigation rules in pure model
+tests and assert this helper's VT-interpreted frames at the integration layer.
+
 A real subprocess/`node-pty` layer (an actual terminal emulator, real
 keyboard-driver-level input) is deliberately out of scope for now --
 `driveComponent` + `renderToTerminal` already cover unit and structural

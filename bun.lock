@@ -66,7 +66,7 @@
     },
     "packages/pi-tui-harness": {
       "name": "@danypops/pi-tui-harness",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "@xterm/headless": "^6.0.0",
       },
