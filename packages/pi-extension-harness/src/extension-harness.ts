@@ -254,6 +254,13 @@ export interface ExtensionHarness {
 	 * Useful for inspecting or overriding stub behaviour in advanced scenarios.
 	 */
 	readonly ctx: ExtensionContext;
+
+	/**
+	 * The ExtensionAPI stub passed to the factory. Useful for calling a function that takes a raw
+	 * `pi: ExtensionAPI` directly -- e.g. a helper normally invoked from inside a real extension's
+	 * own factory (registerXTools(pi, ...), createXVehicle(pi, ...)) that a test calls standalone.
+	 */
+	readonly api: ExtensionAPI;
 }
 
 // ── Implementation ────────────────────────────────────────────────────────────
@@ -557,6 +564,7 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 	}
 
 	return {
+		api,
 		get notifications() {
 			return notifications;
 		},

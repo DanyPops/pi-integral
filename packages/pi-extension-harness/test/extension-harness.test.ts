@@ -187,4 +187,12 @@ describe("createExtensionHarness", () => {
 		const h = createExtensionHarness(() => {}, { mode: "tui" });
 		expect(h.ctx.mode).toBe("tui");
 	});
+
+	it("exposes the raw pi: ExtensionAPI stub for calling a helper directly, standalone, outside any factory", () => {
+		const h = createExtensionHarness(() => {});
+		const appended: Array<{ customType: string; data: unknown }> = [];
+		h.api.appendEntry("probe", { x: 1 });
+		appended.push(...h.appendedEntries);
+		expect(appended).toEqual([{ customType: "probe", data: { x: 1 } }]);
+	});
 });
