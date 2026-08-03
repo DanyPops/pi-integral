@@ -121,4 +121,70 @@ describe("createExtensionHarness", () => {
 		expect(order).toEqual(["factory-resolved", "session_start"]);
 		await h.shutdown();
 	});
+
+	it("existingTools seeds getAllTools() with tools registered elsewhere, plus this factory's own", () => {
+		let seen: Array<{ name: string }> = [];
+		const h = createExtensionHarness(
+			(pi) => {
+				pi.registerTool({ name: "my_tool", description: "x", parameters: {}, execute: async () => ({ content: [] }) } as any);
+				seen = pi.getAllTools();
+			},
+			{ existingTools: ["other_extensions_tool"] },
+		);
+		expect(h.tools.has("my_tool")).toBe(true);
+		expect(seen.map((t) => t.name).sort()).toEqual(["my_tool", "other_extensions_tool"]);
+	});
+
+	it("existingTools also seeds getActiveTools()'s starting value by default", () => {
+		const h = createExtensionHarness(() => {}, { existingTools: ["other_extensions_tool"] });
+		expect(h.activeTools).toEqual(["other_extensions_tool"]);
+	});
+
+	it("initialActiveTools overrides existingTools' default seeding for getActiveTools()", () => {
+		const h = createExtensionHarness(() => {}, { existingTools: ["exists_but_inactive"], initialActiveTools: [] });
+		expect(h.activeTools).toEqual([]);
+	});
+
+	it("activeToolsHistory records every setActiveTools() call, not just the final value", () => {
+		const h = createExtensionHarness((pi) => {
+			pi.setActiveTools(["a"]);
+			pi.setActiveTools(["a", "b"]);
+		});
+		expect(h.activeToolsHistory).toEqual([["a"], ["a", "b"]]);
+		expect(h.activeTools).toEqual(["a", "b"]);
+	});
+
+	it("appendedEntries records every pi.appendEntry() call, in order", async () => {
+		const h = createExtensionHarness((pi) => {
+			pi.on("session_start", () => {
+				pi.appendEntry("widget", { value: 1 });
+			});
+		});
+		await h.boot();
+		expect(h.appendedEntries).toEqual([{ customType: "widget", data: { value: 1 } }]);
+		await h.shutdown();
+		expect(h.appendedEntries).toHaveLength(0);
+	});
+
+	it("confirm option answers ctx.ui.confirm() with a fixed boolean instead of the hardcoded default false", async () => {
+		const h = createExtensionHarness(() => {}, { confirm: true });
+		expect(await h.ctx.ui.confirm("Confirm", "proceed?")).toBe(true);
+	});
+
+	it("confirm option accepts a function, invoked fresh on every call", async () => {
+		let calls = 0;
+		const h = createExtensionHarness(() => {}, {
+			confirm: () => {
+				calls++;
+				return calls === 1;
+			},
+		});
+		expect(await h.ctx.ui.confirm("Confirm", "first")).toBe(true);
+		expect(await h.ctx.ui.confirm("Confirm", "second")).toBe(false);
+	});
+
+	it("mode option overrides ctx.mode's hardcoded 'print' default", () => {
+		const h = createExtensionHarness(() => {}, { mode: "tui" });
+		expect(h.ctx.mode).toBe("tui");
+	});
 });

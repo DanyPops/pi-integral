@@ -130,6 +130,26 @@ export interface ExtensionHarnessOptions {
 	 * }
 	 */
 	exec?: (cmd: string, args: string[], options?: ExecOptions) => Promise<ExecResult>;
+	/**
+	 * Names of tools already registered elsewhere (another extension, or Pi core) before this
+	 * factory runs, for testing collision/dedup logic against pi.getAllTools(). getAllTools()
+	 * returns these plus whatever this factory itself registers via pi.registerTool() -- matching
+	 * real Pi, where an extension's own tools are always included in its own view of "all tools".
+	 */
+	existingTools?: string[];
+	/**
+	 * Seeds pi.getActiveTools()'s starting value. Defaults to existingTools when omitted, since a
+	 * pre-registered tool is normally also active; pass an explicit (possibly different or empty)
+	 * list to test a tool that exists but starts inactive.
+	 */
+	initialActiveTools?: string[];
+	/**
+	 * Stub for ctx.ui.confirm(). A boolean answers every confirm() call the same way; a function is
+	 * invoked fresh each time for scenario-specific answers. Default: always false.
+	 */
+	confirm?: boolean | (() => boolean | Promise<boolean>);
+	/** Stub for ctx.mode. Default: "print". */
+	mode?: ExtensionContext["mode"];
 }
 
 /**
@@ -183,6 +203,12 @@ export interface ExtensionHarness {
 	 * Standard assertion: expect(h.leaks).toHaveLength(0)
 	 */
 	readonly leaks: HarnessLeak[];
+
+	/** Every pi.appendEntry(customType, data) call, in order. */
+	readonly appendedEntries: Array<{ customType: string; data: unknown }>;
+
+	/** Every pi.setActiveTools(names) call's argument, in order -- for asserting call count/history, not just the final active set. */
+	readonly activeToolsHistory: string[][];
 
 	// ── Lifecycle ───────────────────────────────────────────────────────────
 
@@ -249,7 +275,10 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 	const commands: string[] = [];
 	const commandHandlers = new Map<string, (...args: any[]) => any>();
 	const handlers = new Map<string, Array<ExtensionHandler<any, any>>>();
-	let activeTools: string[] = [];
+	const existingTools = options.existingTools ?? [];
+	const appendedEntries: Array<{ customType: string; data: unknown }> = [];
+	const activeToolsHistory: string[][] = [];
+	let activeTools: string[] = [...(options.initialActiveTools ?? existingTools)];
 	let sessionName: string | undefined;
 
 	// ── ExtensionContext stub ────────────────────────────────────────────────
@@ -277,7 +306,7 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 			notifications.push({ message, type });
 		},
 		select: async () => undefined,
-		confirm: async () => false,
+		confirm: async () => (typeof options.confirm === "function" ? options.confirm() : (options.confirm ?? false)),
 		input: async () => undefined,
 		onTerminalInput: () => () => {},
 		setStatus: () => {},
@@ -302,7 +331,7 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 
 	const ctx: ExtensionContext = {
 		cwd,
-		mode: "print",
+		mode: options.mode ?? "print",
 		hasUI: false,
 		sessionManager: sessionManagerStub,
 		modelRegistry: modelRegistryStub,
@@ -356,7 +385,9 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 			userMessages.push({ content: text, options: opts });
 		},
 
-		appendEntry: () => {},
+		appendEntry(customType: string, data?: unknown) {
+			appendedEntries.push({ customType, data });
+		},
 
 		setSessionName(name: string) {
 			sessionName = name;
@@ -367,9 +398,10 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		exec: options.exec ?? (async () => ({ stdout: "", stderr: "", code: 0, killed: false })),
 
 		getActiveTools: () => [...activeTools],
-		getAllTools: () => [],
+		getAllTools: () => [...existingTools.map((name) => ({ name })), ...[...tools.keys()].map((name) => ({ name }))],
 
 		setActiveTools(names: string[]) {
+			activeToolsHistory.push([...names]);
 			activeTools = [...names];
 		},
 
@@ -508,6 +540,8 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		sessionName = undefined;
 		stdoutLeaks.length = 0;
 		stderrLeaks.length = 0;
+		appendedEntries.length = 0;
+		activeToolsHistory.length = 0;
 	}
 
 	async function invokeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
@@ -549,6 +583,12 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		},
 		get leaks() {
 			return [...stdoutLeaks, ...stderrLeaks];
+		},
+		get appendedEntries() {
+			return appendedEntries;
+		},
+		get activeToolsHistory() {
+			return activeToolsHistory;
 		},
 		boot,
 		shutdown,
