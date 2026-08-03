@@ -38,8 +38,8 @@ export interface ManagedProcess {
 }
 
 /**
- * Spawns a real child process with the two concerns every one of this package's callers
- * (pi-process-harness's spawnRealPiProcess, spawnCompanionDaemon) previously duplicated
+ * Spawns a real child process with the two concerns this module's own callers
+ * (spawnRealPiProcess, spawnCompanionDaemon) previously duplicated
  * independently: bounded stderr capture, and graceful-then-forceful shutdown. Stdout is exposed
  * raw via onStdout -- NDJSON/line-buffered parsing (see line-splitter.ts) and readiness polling
  * are each caller's own higher-level concern, not this primitive's.

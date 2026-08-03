@@ -17,8 +17,9 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createLineSplitter, spawnManagedProcess } from "@danypops/process-support";
 import type { AgentSessionEvent, RpcCommand } from "@earendil-works/pi-coding-agent";
+import { createLineSplitter } from "./line-splitter.js";
+import { spawnManagedProcess } from "./managed-process.js";
 import { encodeRpcCommand, parseRpcLine } from "./rpc-protocol.js";
 
 export interface SpawnPiProcessOptions {

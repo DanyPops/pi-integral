@@ -25,7 +25,6 @@
 		"url": "https://github.com/DanyPops/pi-integral/issues"
 	},
 	"dependencies": {
-		"@danypops/process-support": "^0.1.0",
 		"@earendil-works/pi-ai": "*"
 	},
 	"peerDependencies": {

@@ -18,10 +18,6 @@ and real terminal rendering.
   `Component` instances: named-key input helpers, and a real headless VT state machine
   (`@xterm/headless`) for structured cell/plain-text assertions plus golden-file snapshots,
   instead of a hand-rolled ANSI-stripping regex.
-- **[`packages/process-support`](packages/process-support)** — shared process-spawning
-  primitives (bounded stderr capture, graceful-then-forceful shutdown, NDJSON line buffering)
-  used by `pi-process-harness`; not Pi-specific, published standalone since it's a real runtime
-  dependency, not just a dev-time convenience.
 
 Each package picks the cheapest layer that actually proves the behavior in question; reach for
 the next one only when a test genuinely needs more than the current layer can give.

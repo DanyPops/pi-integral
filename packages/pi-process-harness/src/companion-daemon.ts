@@ -3,10 +3,10 @@
  * process under test (e.g. Epi, or any other Vehicle-backed daemon) --
  * generic, no Pi-specific or Vehicle-specific knowledge. Readiness is the
  * caller's own concern (poll a health endpoint, a handle file, a port),
- * this module only owns the poll loop on top of @danypops/process-support's
+ * this module only owns the poll loop on top of ./managed-process.ts's
  * shared spawn/stderr/shutdown primitive.
  */
-import { type ManagedProcess, spawnManagedProcess } from "@danypops/process-support";
+import { type ManagedProcess, spawnManagedProcess } from "./managed-process.js";
 
 const DEFAULT_READY_TIMEOUT_MS = 10_000;
 const DEFAULT_POLL_INTERVAL_MS = 100;

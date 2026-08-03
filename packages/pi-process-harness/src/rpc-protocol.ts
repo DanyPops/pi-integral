@@ -19,7 +19,7 @@
  * `pi-process.ts` doesn't use `RpcClient` itself, though: RpcClient
  * exposes no public pid/exitCode/exit-event/bounded-stderr surface at all
  * (its own child process is a private field), which this harness's tests
- * genuinely rely on. Its own spawn/shutdown layer (`@danypops/process-support`)
+ * genuinely rely on. Its own spawn/shutdown layer (`./managed-process.ts`)
  * stays -- only the wire-format encode/decode was actually duplicated.
  */
 import type { AgentSessionEvent, RpcCommand } from "@earendil-works/pi-coding-agent";
