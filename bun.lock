@@ -6,6 +6,7 @@
       "name": "pi-integral-workspace",
       "devDependencies": {
         "@biomejs/biome": "^2.5.6",
+        "@danypops/packed": "^0.7.0",
         "eslint": "^10.8.0",
         "eslint-import-resolver-typescript": "^4.4.5",
         "eslint-plugin-import-x": "^4.17.1",
@@ -155,6 +156,8 @@
     "@biomejs/cli-win32-arm64": ["@biomejs/cli-win32-arm64@2.5.6", "", { "os": "win32", "cpu": "arm64" }, "sha512-tDGshcm6BdkZOCGnTDX0Y8/U4IfBSlnUU7T56nNDuPEfed+aHg+u8G36NB43fJVl0Os6+QURXIE1yuD7AaEofA=="],
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.5.6", "", { "os": "win32", "cpu": "x64" }, "sha512-WN05KwXnTO/2J45RQPvzZMXf7tZUIofHoR35xIPfCo7pQ2RFidxI8sfb5mGsaTxdMmEOzHzOPRCdA5/fCpc7xQ=="],
+
+    "@danypops/packed": ["@danypops/packed@0.7.0", "", { "bin": { "packed-policy": "dist/repository-policy-cli.js" } }, "sha512-9P56MZEuxd6SmnfXSVNlb0dePNTwVU+3zBvlScZRejChL7VvfNx3XyWUIRVZOubL+n4XtZUCw+VhwrXnd7TXaQ=="],
 
     "@danypops/pi-extension-harness": ["@danypops/pi-extension-harness@workspace:packages/pi-extension-harness"],
 
