@@ -1,13 +1,15 @@
 {
 	"name": "pi-integral-workspace",
 	"private": true,
+	"packageManager": "bun@1.3.14",
 	"type": "module",
 	"workspaces": ["packages/*"],
 	"scripts": {
 		"build": "bun run --filter '*' build",
 		"test": "bun test",
 		"typecheck": "bun run --filter '*' typecheck",
-		"lint": "biome check . && eslint packages/*/src"
+		"lint": "biome check . && eslint packages/*/src",
+		"lint:deps": "bunx sherif@1.13.0"
 	},
 	"repository": {
 		"type": "git",
