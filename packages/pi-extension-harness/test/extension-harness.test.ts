@@ -195,4 +195,27 @@ describe("createExtensionHarness", () => {
 		appended.push(...h.appendedEntries);
 		expect(appended).toEqual([{ customType: "probe", data: { x: 1 } }]);
 	});
+
+	it("exposes a real events: EventBus on pi -- cross-extension shared-bus code needs no second hand-rolled fake", () => {
+		const received: unknown[] = [];
+		const h = createExtensionHarness((pi) => {
+			pi.events.on("some.channel.v1", (payload) => {
+				received.push(payload);
+			});
+		});
+		h.api.events.emit("some.channel.v1", { hello: "world" });
+		expect(received).toEqual([{ hello: "world" }]);
+	});
+
+	it("events.on() returns an unsubscribe function, matching Pi's own real EventBus contract", () => {
+		const received: unknown[] = [];
+		const h = createExtensionHarness(() => {});
+		const unsubscribe = h.api.events.on("some.channel.v1", (payload) => {
+			received.push(payload);
+		});
+		h.api.events.emit("some.channel.v1", 1);
+		unsubscribe();
+		h.api.events.emit("some.channel.v1", 2);
+		expect(received).toEqual([1]);
+	});
 });

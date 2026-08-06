@@ -33,14 +33,15 @@
  *   await h.shutdown();
  */
 
-import type {
-	ExecOptions,
-	ExecResult,
-	ExtensionAPI,
-	ExtensionContext,
-	ExtensionFactory,
-	ExtensionHandler,
-	ToolDefinition,
+import {
+	createEventBus,
+	type ExecOptions,
+	type ExecResult,
+	type ExtensionAPI,
+	type ExtensionContext,
+	type ExtensionFactory,
+	type ExtensionHandler,
+	type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import { JITI_NATIVE_MODULES } from "./jiti-native-modules.js";
 
@@ -418,6 +419,10 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		setThinkingLevel: () => {},
 		registerProvider: () => {},
 		refreshTools: () => {},
+		// Real EventBus, not a second hand-rolled stub -- Pi's own createEventBus() already has the
+		// exact shape (on/emit, bounded, in-memory) every extension's shared-bus code expects, so
+		// there is nothing harness-specific to fake here.
+		events: createEventBus(),
 	} as unknown as ExtensionAPI;
 
 	// Call the factory now so sync extensions register tools immediately.
