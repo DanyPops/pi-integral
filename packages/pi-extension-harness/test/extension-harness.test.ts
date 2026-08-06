@@ -249,6 +249,30 @@ describe("createExtensionHarness", () => {
 		await expect(h.ctx.reload()).resolves.toBeUndefined();
 	});
 
+	it("invalidateCtx() makes every ctx property/method access throw, matching ExtensionRunner.assertActive() after a real session replacement/reload", () => {
+		const h = createExtensionHarness(() => {});
+		expect(h.ctx.cwd).toBeDefined();
+
+		h.invalidateCtx();
+
+		expect(() => h.ctx.cwd).toThrow(/This extension ctx is stale after session replacement or reload/);
+		expect(() => h.ctx.ui).toThrow(/This extension ctx is stale/);
+		expect(() => h.ctx.isIdle).toThrow(/This extension ctx is stale/);
+	});
+
+	it("invalidateCtx() accepts a custom message instead of the default stale-ctx wording", () => {
+		const h = createExtensionHarness(() => {});
+		h.invalidateCtx("stale after /reload");
+		expect(() => h.ctx.mode).toThrow("stale after /reload");
+	});
+
+	it("ctx.newSession()/.fork()/.switchSession()/.reload() stay permissive no-ops -- invalidateCtx() is opt-in, not wired to them automatically", async () => {
+		const h = createExtensionHarness(() => {});
+		await h.ctx.newSession();
+		await h.ctx.reload();
+		expect(h.ctx.cwd).toBeDefined();
+	});
+
 	it("invokeCommand() passes the same ExtensionCommandContext-shaped ctx a command handler is really typed to receive", async () => {
 		let sawWaitForIdle = false;
 		const h = createExtensionHarness((pi) => {

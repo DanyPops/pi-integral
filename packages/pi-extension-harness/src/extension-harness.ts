@@ -283,6 +283,18 @@ export interface ExtensionHarness {
 	 * own factory (registerXTools(pi, ...), createXVehicle(pi, ...)) that a test calls standalone.
 	 */
 	readonly api: ExtensionAPI;
+
+	/**
+	 * Simulates the real ExtensionRunner's `invalidate()`: after this call, touching *any*
+	 * property or method on `h.ctx` throws the same "This extension ctx is stale after session
+	 * replacement or reload..." error Pi's own runner throws once a captured ctx has outlived its
+	 * session (see "Session replacement lifecycle and footguns" in extensions.md). The harness's
+	 * `ctx.newSession()/.fork()/.switchSession()/.reload()` stubs do not call this automatically --
+	 * they stay permissive no-ops, matching today's behaviour -- so a test exercising this footgun
+	 * calls it explicitly at the point in the scenario where a real session replacement/reload
+	 * would have landed (e.g. mid-retry-loop, between two awaited steps).
+	 */
+	invalidateCtx(message?: string): void;
 }
 
 // ── Implementation ────────────────────────────────────────────────────────────
@@ -368,7 +380,7 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 	// any handler(args, ctx) called directly). None of these command-only methods have a
 	// meaningful "default" beyond a safe no-op/never-cancelled stub -- no test has needed anything
 	// more, and there is no single fake session/tree state that would be correct for every consumer.
-	const ctx: ExtensionCommandContext = {
+	const rawCtx: ExtensionCommandContext = {
 		cwd,
 		mode: options.mode ?? "print",
 		hasUI: false,
@@ -394,6 +406,19 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		reload: async () => {},
 		ui,
 	};
+
+	// Mirrors ExtensionRunner.assertActive(): once invalidateCtx() fires, every property/method
+	// access on ctx throws the same stale-ctx error real Pi throws after a session
+	// replacement/reload, instead of the target object's real value/behaviour.
+	const DEFAULT_STALE_CTX_MESSAGE =
+		"This extension ctx is stale after session replacement or reload. Do not use a captured pi or command ctx after ctx.newSession(), ctx.fork(), ctx.switchSession(), or ctx.reload(). For newSession, fork, and switchSession, move post-replacement work into withSession and use the ctx passed to withSession. For reload, do not use the old ctx after await ctx.reload().";
+	let ctxStaleMessage: string | undefined;
+	const ctx: ExtensionCommandContext = new Proxy(rawCtx, {
+		get(target, prop, receiver) {
+			if (ctxStaleMessage) throw new Error(ctxStaleMessage);
+			return Reflect.get(target, prop, receiver);
+		},
+	});
 
 	// ── ExtensionAPI stub ────────────────────────────────────────────────────
 
@@ -606,6 +631,10 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		await handler(args ?? "", ctx);
 	}
 
+	function invalidateCtx(message?: string): void {
+		ctxStaleMessage = message ?? DEFAULT_STALE_CTX_MESSAGE;
+	}
+
 	return {
 		api,
 		get notifications() {
@@ -647,5 +676,6 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		invokeTool,
 		invokeCommand,
 		ctx,
+		invalidateCtx,
 	};
 }
