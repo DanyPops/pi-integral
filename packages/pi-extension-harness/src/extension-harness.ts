@@ -38,6 +38,7 @@ import {
 	type ExecOptions,
 	type ExecResult,
 	type ExtensionAPI,
+	type ExtensionCommandContext,
 	type ExtensionContext,
 	type ExtensionFactory,
 	type ExtensionHandler,
@@ -145,10 +146,28 @@ export interface ExtensionHarnessOptions {
 	 */
 	initialActiveTools?: string[];
 	/**
-	 * Stub for ctx.ui.confirm(). A boolean answers every confirm() call the same way; a function is
-	 * invoked fresh each time for scenario-specific answers. Default: always false.
+	 * Stub for ctx.ui.confirm(title, message). A boolean answers every confirm() call the same way;
+	 * a function is invoked fresh each time (receiving the real title/message Pi's own confirm()
+	 * passes) for scenario-specific answers, e.g. deciding by title text. Default: always false.
 	 */
-	confirm?: boolean | (() => boolean | Promise<boolean>);
+	confirm?: boolean | ((title: string, message: string) => boolean | Promise<boolean>);
+	/**
+	 * Stub for ctx.ui.input(title, placeholder). A fixed string (or undefined, matching a
+	 * cancelled dialog) answers every input() call the same way; a function is invoked fresh each
+	 * time for scenario-specific answers, e.g. queuing a sequence of typed values. Default: always
+	 * undefined (matches the hardcoded prior behaviour).
+	 */
+	input?: string | undefined | ((title: string, placeholder?: string) => string | undefined | Promise<string | undefined>);
+	/**
+	 * Stub for ctx.ui.custom(factory). Pi's real custom() invokes `factory` with a live TUI/scroll
+	 * handle, theme, keybindings, and a `done` callback, then resolves once the component calls
+	 * `done()` -- there is no single generic default behaviour a stub could fake correctly, so this
+	 * option hands the raw `factory` straight to the caller's own implementation (e.g. call it with
+	 * fixture args, render/drive the returned Component directly, and return whatever the scenario
+	 * needs `custom()` to resolve with). Default: always undefined (matches the hardcoded prior
+	 * behaviour), i.e. as if the panel closed with no selection.
+	 */
+	custom?: (factory: (...args: any[]) => any) => any;
 	/** Stub for ctx.mode. Default: "print". */
 	mode?: ExtensionContext["mode"];
 }
@@ -251,10 +270,12 @@ export interface ExtensionHarness {
 	// ── Context access ──────────────────────────────────────────────────────
 
 	/**
-	 * The ExtensionContext stub passed to all event handlers.
-	 * Useful for inspecting or overriding stub behaviour in advanced scenarios.
+	 * The ExtensionContext stub passed to all event handlers -- typed as the wider
+	 * ExtensionCommandContext (which extends ExtensionContext) so the same stub also satisfies a
+	 * pi.registerCommand() handler's ctx (see invokeCommand()) without a second, command-specific
+	 * fake. Useful for inspecting or overriding stub behaviour in advanced scenarios.
 	 */
-	readonly ctx: ExtensionContext;
+	readonly ctx: ExtensionCommandContext;
 
 	/**
 	 * The ExtensionAPI stub passed to the factory. Useful for calling a function that takes a raw
@@ -314,8 +335,10 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 			notifications.push({ message, type });
 		},
 		select: async () => undefined,
-		confirm: async () => (typeof options.confirm === "function" ? options.confirm() : (options.confirm ?? false)),
-		input: async () => undefined,
+		confirm: async (title: string, message: string) =>
+			typeof options.confirm === "function" ? options.confirm(title, message) : (options.confirm ?? false),
+		input: async (title: string, placeholder?: string) =>
+			typeof options.input === "function" ? options.input(title, placeholder) : options.input,
 		onTerminalInput: () => () => {},
 		setStatus: () => {},
 		setWorkingMessage: () => {},
@@ -326,7 +349,7 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		setFooter: () => {},
 		setHeader: () => {},
 		setTitle: () => {},
-		custom: async () => undefined as any,
+		custom: async (factory: (...args: any[]) => any) => (options.custom ? options.custom(factory) : undefined),
 		pasteToEditor: () => {},
 		setEditorText: () => {},
 		getEditorText: () => "",
@@ -337,7 +360,15 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		theme: {} as any,
 	} as unknown as ExtensionContext["ui"];
 
-	const ctx: ExtensionContext = {
+	// ExtensionCommandContext extends ExtensionContext -- typing ctx as the wider command-capable
+	// shape (rather than the narrower ExtensionContext) means the exact same stub structurally
+	// satisfies both a pi.on() event handler's ctx and a pi.registerCommand() handler's ctx, so
+	// there is one harness ctx instead of extension authors hand-rolling a second
+	// ExtensionCommandContext fake purely for command-handler tests (invokeCommand() below, and
+	// any handler(args, ctx) called directly). None of these command-only methods have a
+	// meaningful "default" beyond a safe no-op/never-cancelled stub -- no test has needed anything
+	// more, and there is no single fake session/tree state that would be correct for every consumer.
+	const ctx: ExtensionCommandContext = {
 		cwd,
 		mode: options.mode ?? "print",
 		hasUI: false,
@@ -354,6 +385,13 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		getContextUsage: () => undefined,
 		compact: () => {},
 		getSystemPrompt: () => "",
+		getSystemPromptOptions: () => ({}) as ReturnType<ExtensionCommandContext["getSystemPromptOptions"]>,
+		waitForIdle: async () => {},
+		newSession: async () => ({ cancelled: false }),
+		fork: async () => ({ cancelled: false }),
+		navigateTree: async () => ({ cancelled: false }),
+		switchSession: async () => ({ cancelled: false }),
+		reload: async () => {},
 		ui,
 	};
 

@@ -109,6 +109,38 @@ are all real, observable state — inspect `h.notifications`, `h.userMessages`,
 `exec` option for extensions that shell out. Env var overrides passed via
 `env` are applied for `boot()..shutdown()` and restored after.
 
+`pi.events` is a real `EventBus` (Pi's own `createEventBus()`), not a second
+hand-rolled stub — extensions using the shared cross-extension bus need no
+additional fake.
+
+`ctx` is typed as `ExtensionCommandContext` (a superset of `ExtensionContext`
+with `waitForIdle`/`newSession`/`fork`/`navigateTree`/`switchSession`/`reload`/
+`getSystemPromptOptions`, all safe never-cancelled/no-op stubs by default) so
+the same `h.ctx` works for a `pi.on(...)` event handler and a
+`pi.registerCommand(...)` handler's ctx alike — no separate
+`ExtensionCommandContext` fake needed for command-handler tests.
+
+`ctx.ui.confirm`/`ctx.ui.input` are configurable via the `confirm`/`input`
+options: a fixed value answers every call the same way, or a function
+receives the real title/message/placeholder for scenario-specific answers
+(e.g. deciding by title text, or queuing a sequence of typed values).
+`ctx.ui.custom` has no meaningful generic default (it normally drives a live
+TUI component), so the `custom` option hands the raw `factory` straight to
+your own implementation — call it with fixture args, drive the returned
+component, and return whatever the scenario needs `custom()` to resolve
+with.
+
+```ts
+const h = createExtensionHarness(myExtension, {
+  confirm: (title) => title.includes("recovery"),
+  input: () => queuedInputs.shift(),
+  custom: (factory) => {
+    const component = factory(tui, theme, keybindings, done);
+    return component.render(80).join("\n");
+  },
+});
+```
+
 ## License
 
 MIT

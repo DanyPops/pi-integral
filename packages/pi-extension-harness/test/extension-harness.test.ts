@@ -183,6 +183,87 @@ describe("createExtensionHarness", () => {
 		expect(await h.ctx.ui.confirm("Confirm", "second")).toBe(false);
 	});
 
+	it("confirm option's function form receives the real title/message ctx.ui.confirm() was called with", async () => {
+		const seen: Array<[string, string]> = [];
+		const h = createExtensionHarness(() => {}, {
+			confirm: (title, message) => {
+				seen.push([title, message]);
+				return title.includes("recovery");
+			},
+		});
+		expect(await h.ctx.ui.confirm("Disable routing enforcement?", "details")).toBe(false);
+		expect(await h.ctx.ui.confirm("Enable Codex recovery?", "details")).toBe(true);
+		expect(seen).toEqual([
+			["Disable routing enforcement?", "details"],
+			["Enable Codex recovery?", "details"],
+		]);
+	});
+
+	it("input option answers ctx.ui.input() with a fixed string instead of the hardcoded default undefined", async () => {
+		const h = createExtensionHarness(() => {}, { input: "300,000" });
+		expect(await h.ctx.ui.input("Token budget", "e.g. 300,000")).toBe("300,000");
+	});
+
+	it("input option accepts a function for queuing a sequence of scenario-specific answers", async () => {
+		const queue = ["300,000", "off"];
+		const h = createExtensionHarness(() => {}, { input: () => queue.shift() });
+		expect(await h.ctx.ui.input("Daily budget")).toBe("300,000");
+		expect(await h.ctx.ui.input("Hourly budget")).toBe("off");
+		expect(await h.ctx.ui.input("Weekly budget")).toBeUndefined();
+	});
+
+	it("custom option hands the real factory to the caller's own implementation instead of the hardcoded no-op default", async () => {
+		const h = createExtensionHarness(() => {}, {
+			custom: (factory) => {
+				// Mirrors a real panel: build a minimal Component via the factory, drive it, and
+				// resolve custom() with whatever the scenario needs. Loosely typed (any), same as every
+				// real consumer's own test fixture -- a fully Component-typed fake buys nothing here.
+				const component = factory({}, { fg: (_c: string, text: string) => text, bold: (text: string) => text }, {}, () => undefined);
+				return component.render(80).join("\n");
+			},
+		});
+		const rendered = await h.ctx.ui.custom<string>(((
+			_tui: unknown,
+			_theme: unknown,
+			_keybindings: unknown,
+			_done: (v: unknown) => void,
+		) => ({
+			render: (width: number) => [`panel width=${width}`],
+		})) as any);
+		expect(rendered).toBe("panel width=80");
+	});
+
+	it("custom option defaults to undefined, matching the prior hardcoded no-selection behaviour", async () => {
+		const h = createExtensionHarness(() => {});
+		expect(await h.ctx.ui.custom((() => "should never be reached") as any)).toBeUndefined();
+	});
+
+	it("ctx satisfies the wider ExtensionCommandContext -- command-only methods exist with safe never-cancelled defaults", async () => {
+		const h = createExtensionHarness(() => {});
+		expect(h.ctx.getSystemPromptOptions()).toEqual({} as any);
+		await expect(h.ctx.waitForIdle()).resolves.toBeUndefined();
+		expect(await h.ctx.newSession()).toEqual({ cancelled: false });
+		expect(await h.ctx.fork("entry-1")).toEqual({ cancelled: false });
+		expect(await h.ctx.navigateTree("entry-1")).toEqual({ cancelled: false });
+		expect(await h.ctx.switchSession("/tmp/session.jsonl")).toEqual({ cancelled: false });
+		await expect(h.ctx.reload()).resolves.toBeUndefined();
+	});
+
+	it("invokeCommand() passes the same ExtensionCommandContext-shaped ctx a command handler is really typed to receive", async () => {
+		let sawWaitForIdle = false;
+		const h = createExtensionHarness((pi) => {
+			pi.registerCommand("probe", {
+				description: "probes ctx",
+				handler: async (_args, ctx) => {
+					await ctx.waitForIdle();
+					sawWaitForIdle = true;
+				},
+			});
+		});
+		await h.invokeCommand("probe");
+		expect(sawWaitForIdle).toBe(true);
+	});
+
 	it("mode option overrides ctx.mode's hardcoded 'print' default", () => {
 		const h = createExtensionHarness(() => {}, { mode: "tui" });
 		expect(h.ctx.mode).toBe("tui");
