@@ -241,6 +241,23 @@ export interface ExtensionHarness {
 	/** Fire "session_shutdown" and clear internal state. */
 	shutdown(): Promise<void>;
 
+	/**
+	 * Simulates the real ExtensionRunner's reload sequence (see `AgentSession.reload()` and
+	 * `ctx.reload()` in extensions.md's "Session replacement lifecycle and footguns"): fires
+	 * `session_shutdown` with `{reason: "reload"}` on the current registration, clears this
+	 * extension's own registered tools/commands/handlers (matching Pi building a brand-new
+	 * ExtensionRunner with an empty tool registry -- `existingTools`/`initialActiveTools` seeded at
+	 * construction are untouched, modeling other extensions'/Pi's own tools that don't belong to
+	 * this factory), re-invokes the ORIGINAL factory fresh against the same `api` (matching Pi's
+	 * jiti re-import + fresh `factory(api)` call once `clearExtensionCache()` has run), then fires
+	 * `session_start` with `{reason: "reload"}` against the freshly re-registered handlers.
+	 *
+	 * Does NOT reset notifications/userMessages/leaks/appendedEntries/activeToolsHistory --
+	 * those are cumulative observations across the harness's whole lifetime, not per-registration
+	 * state, and a test asserting on their contents across a reload needs the full history.
+	 */
+	reload(): Promise<void>;
+
 	// ── Event simulation ────────────────────────────────────────────────────
 
 	/**
@@ -597,6 +614,18 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		await emit("session_start", { reason: "startup" });
 	}
 
+	async function reload(): Promise<void> {
+		await emit("session_shutdown", { reason: "reload" });
+		tools.clear();
+		commands.length = 0;
+		commandHandlers.clear();
+		handlers.clear();
+		activeTools = [...(options.initialActiveTools ?? existingTools)];
+		const reloadedFactoryResult = factory(api);
+		await reloadedFactoryResult;
+		await emit("session_start", { reason: "reload" });
+	}
+
 	async function shutdown(): Promise<void> {
 		await emit("session_shutdown", {});
 		// Restore stdout/stderr before env so shutdown handlers see the real streams.
@@ -672,6 +701,7 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		},
 		boot,
 		shutdown,
+		reload,
 		emit,
 		invokeTool,
 		invokeCommand,

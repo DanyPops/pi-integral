@@ -329,3 +329,99 @@ describe("createExtensionHarness", () => {
 		expect(received).toEqual([1]);
 	});
 });
+
+describe("reload()", () => {
+	it("re-runs the factory between session_shutdown and session_start", async () => {
+		const lifecycleEvents: string[] = [];
+		let factoryRunCount = 0;
+		const h = createExtensionHarness((pi) => {
+			factoryRunCount += 1;
+			pi.on("session_shutdown", (event) => {
+				lifecycleEvents.push(`shutdown:${(event as { reason?: string }).reason}`);
+			});
+			pi.on("session_start", (event) => {
+				lifecycleEvents.push(`start:${(event as { reason?: string }).reason}`);
+			});
+		});
+		await h.boot();
+		expect(factoryRunCount).toBe(1);
+		expect(lifecycleEvents).toEqual(["start:startup"]);
+
+		await h.reload();
+		expect(factoryRunCount).toBe(2);
+		expect(lifecycleEvents).toEqual(["start:startup", "shutdown:reload", "start:reload"]);
+	});
+
+	// Matches a brand-new ExtensionRunner's empty registry -- a stale tool/command surviving
+	// reload would falsely look re-registered without the factory ever running again.
+	it("clears tools and commands before re-invoking the factory", async () => {
+		let registrationPass = 0;
+		const h = createExtensionHarness((pi) => {
+			registrationPass += 1;
+			pi.registerTool({
+				name: "probe_tool",
+				label: "Probe",
+				description: `pass ${registrationPass}`,
+				parameters: {} as never,
+				async execute() {
+					return { content: [], details: undefined };
+				},
+			});
+			pi.registerCommand("probe_command", { description: "probes", handler: async () => {} });
+		});
+		await h.boot();
+		expect(h.tools.get("probe_tool")?.definition.description).toBe("pass 1");
+		expect(h.commands).toEqual(["probe_command"]);
+
+		await h.reload();
+		// Re-registered fresh (pass 2's description), not left over from pass 1, and not duplicated.
+		expect(h.tools.size).toBe(1);
+		expect(h.tools.get("probe_tool")?.definition.description).toBe("pass 2");
+		expect(h.commands).toEqual(["probe_command"]);
+	});
+
+	it("leaves existingTools untouched across reload", async () => {
+		const h = createExtensionHarness(
+			(pi) => {
+				pi.registerTool({
+					name: "own_tool",
+					label: "Own",
+					description: "d",
+					parameters: {} as never,
+					async execute() {
+						return { content: [], details: undefined };
+					},
+				});
+			},
+			{ existingTools: ["other_extensions_tool"] },
+		);
+		await h.boot();
+		expect(
+			h.api
+				.getAllTools()
+				.map((t) => t.name)
+				.sort(),
+		).toEqual(["other_extensions_tool", "own_tool"]);
+
+		await h.reload();
+		expect(
+			h.api
+				.getAllTools()
+				.map((t) => t.name)
+				.sort(),
+		).toEqual(["other_extensions_tool", "own_tool"]);
+	});
+
+	it("preserves cumulative observations like notifications across reload", async () => {
+		const h = createExtensionHarness((pi) => {
+			pi.on("session_start", (_event, ctx) => {
+				ctx.ui.notify("hello");
+			});
+		});
+		await h.boot();
+		expect(h.notifications).toHaveLength(1);
+
+		await h.reload();
+		expect(h.notifications).toHaveLength(2);
+	});
+});
