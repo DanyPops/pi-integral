@@ -66,7 +66,8 @@ describe("createExtensionHarness", () => {
 		await expect(h.invokeCommand("nonexistent")).rejects.toThrow(/not registered/);
 	});
 
-	it("applies env overrides for the duration of boot()..shutdown(), restoring the prior value after", async () => {
+	// Restores the prior value after shutdown().
+	it("applies env overrides for the duration of boot()..shutdown()", async () => {
 		const original = process.env.SAMPLE_EXTENSION_ENV;
 		const h = createExtensionHarness(sampleExtension, { env: { SAMPLE_EXTENSION_ENV: "test-value" } });
 		await h.boot();
@@ -87,7 +88,7 @@ describe("createExtensionHarness", () => {
 		await h.shutdown();
 	});
 
-	it("emit() dispatches to every handler registered for that event and returns the last non-undefined result", async () => {
+	it("emit() dispatches to every handler for an event, returning the last non-undefined result", async () => {
 		let calls = 0;
 		// pi: any -- exercising an event name not part of the real ExtensionEvent
 		// union (emit() itself accepts any string, mirroring how a real Pi
@@ -122,7 +123,7 @@ describe("createExtensionHarness", () => {
 		await h.shutdown();
 	});
 
-	it("existingTools seeds getAllTools() with tools registered elsewhere, plus this factory's own", () => {
+	it("existingTools seeds getAllTools() with tools registered elsewhere", () => {
 		let seen: Array<{ name: string }> = [];
 		const h = createExtensionHarness(
 			(pi) => {
@@ -166,7 +167,7 @@ describe("createExtensionHarness", () => {
 		expect(h.appendedEntries).toHaveLength(0);
 	});
 
-	it("confirm option answers ctx.ui.confirm() with a fixed boolean instead of the hardcoded default false", async () => {
+	it("confirm option answers ctx.ui.confirm() with a fixed boolean", async () => {
 		const h = createExtensionHarness(() => {}, { confirm: true });
 		expect(await h.ctx.ui.confirm("Confirm", "proceed?")).toBe(true);
 	});
@@ -183,7 +184,7 @@ describe("createExtensionHarness", () => {
 		expect(await h.ctx.ui.confirm("Confirm", "second")).toBe(false);
 	});
 
-	it("confirm option's function form receives the real title/message ctx.ui.confirm() was called with", async () => {
+	it("confirm option's function form receives the real title/message it was called with", async () => {
 		const seen: Array<[string, string]> = [];
 		const h = createExtensionHarness(() => {}, {
 			confirm: (title, message) => {
@@ -199,7 +200,7 @@ describe("createExtensionHarness", () => {
 		]);
 	});
 
-	it("input option answers ctx.ui.input() with a fixed string instead of the hardcoded default undefined", async () => {
+	it("input option answers ctx.ui.input() with a fixed string", async () => {
 		const h = createExtensionHarness(() => {}, { input: "300,000" });
 		expect(await h.ctx.ui.input("Token budget", "e.g. 300,000")).toBe("300,000");
 	});
@@ -212,7 +213,7 @@ describe("createExtensionHarness", () => {
 		expect(await h.ctx.ui.input("Weekly budget")).toBeUndefined();
 	});
 
-	it("custom option hands the real factory to the caller's own implementation instead of the hardcoded no-op default", async () => {
+	it("custom option hands the real factory to the caller's own implementation", async () => {
 		const h = createExtensionHarness(() => {}, {
 			custom: (factory) => {
 				// Mirrors a real panel: build a minimal Component via the factory, drive it, and
@@ -238,7 +239,8 @@ describe("createExtensionHarness", () => {
 		expect(await h.ctx.ui.custom((() => "should never be reached") as any)).toBeUndefined();
 	});
 
-	it("ctx satisfies the wider ExtensionCommandContext -- command-only methods exist with safe never-cancelled defaults", async () => {
+	// Command-only methods exist with safe never-cancelled defaults.
+	it("ctx satisfies the wider ExtensionCommandContext", async () => {
 		const h = createExtensionHarness(() => {});
 		expect(h.ctx.getSystemPromptOptions()).toEqual({} as any);
 		await expect(h.ctx.waitForIdle()).resolves.toBeUndefined();
@@ -249,7 +251,8 @@ describe("createExtensionHarness", () => {
 		await expect(h.ctx.reload()).resolves.toBeUndefined();
 	});
 
-	it("invalidateCtx() makes every ctx property/method access throw, matching ExtensionRunner.assertActive() after a real session replacement/reload", () => {
+	// Matches ExtensionRunner.assertActive() after a real session replacement/reload.
+	it("invalidateCtx() makes every ctx property/method access throw", () => {
 		const h = createExtensionHarness(() => {});
 		expect(h.ctx.cwd).toBeDefined();
 
@@ -266,14 +269,15 @@ describe("createExtensionHarness", () => {
 		expect(() => h.ctx.mode).toThrow("stale after /reload");
 	});
 
-	it("ctx.newSession()/.fork()/.switchSession()/.reload() stay permissive no-ops -- invalidateCtx() is opt-in, not wired to them automatically", async () => {
+	// invalidateCtx() is opt-in, never wired to these automatically.
+	it("ctx.newSession()/.fork()/.switchSession()/.reload() stay permissive no-ops", async () => {
 		const h = createExtensionHarness(() => {});
 		await h.ctx.newSession();
 		await h.ctx.reload();
 		expect(h.ctx.cwd).toBeDefined();
 	});
 
-	it("invokeCommand() passes the same ExtensionCommandContext-shaped ctx a command handler is really typed to receive", async () => {
+	it("invokeCommand() passes the same ctx shape a command handler is really typed to receive", async () => {
 		let sawWaitForIdle = false;
 		const h = createExtensionHarness((pi) => {
 			pi.registerCommand("probe", {
@@ -293,7 +297,7 @@ describe("createExtensionHarness", () => {
 		expect(h.ctx.mode).toBe("tui");
 	});
 
-	it("exposes the raw pi: ExtensionAPI stub for calling a helper directly, standalone, outside any factory", () => {
+	it("exposes the raw pi: ExtensionAPI stub for calling a helper directly, outside any factory", () => {
 		const h = createExtensionHarness(() => {});
 		const appended: Array<{ customType: string; data: unknown }> = [];
 		h.api.appendEntry("probe", { x: 1 });
@@ -301,7 +305,8 @@ describe("createExtensionHarness", () => {
 		expect(appended).toEqual([{ customType: "probe", data: { x: 1 } }]);
 	});
 
-	it("exposes a real events: EventBus on pi -- cross-extension shared-bus code needs no second hand-rolled fake", () => {
+	// Cross-extension shared-bus code needs no second hand-rolled fake.
+	it("exposes a real events: EventBus on pi", () => {
 		const received: unknown[] = [];
 		const h = createExtensionHarness((pi) => {
 			pi.events.on("some.channel.v1", (payload) => {
