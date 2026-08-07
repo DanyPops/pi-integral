@@ -15,7 +15,7 @@
     },
     "packages/pi-extension-harness": {
       "name": "@danypops/pi-extension-harness",
-      "version": "0.6.1",
+      "version": "0.6.2",
       "dependencies": {
         "jiti": "^2.7.0",
       },
@@ -58,7 +58,7 @@
     },
     "packages/pi-rpc-protocol": {
       "name": "@danypops/pi-rpc-protocol",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "devDependencies": {
         "@types/node": "^22.0.0",
         "bun-types": "latest",
