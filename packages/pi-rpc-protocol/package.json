@@ -1,6 +1,6 @@
 {
 	"name": "@danypops/pi-rpc-protocol",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "A small, dependency-free parser/encoder for the subset of Pi's documented RPC protocol needed by clients speaking to a pi --mode rpc process.",
 	"license": "MIT",
 	"type": "module",
