@@ -58,7 +58,8 @@ export interface RealPiProcess {
 	onEvent(listener: (event: AgentSessionEvent) => void): () => void;
 	onExit(listener: (code: number | null) => void): () => void;
 	waitForExit(): Promise<number | null>;
-	dispose(): void;
+	/** Stops the real Pi process and removes any harness-owned isolated home before resolving. Idempotent. */
+	dispose(): Promise<void>;
 }
 
 /** Waits until `predicate` is true of some already-seen event, or times out. Polls rather than requiring a caller-supplied resolver per event type. */
@@ -154,12 +155,10 @@ export function spawnRealPiProcess(options: SpawnPiProcessOptions = {}): RealPiP
 		waitForExit() {
 			return process.waitForExit();
 		},
-		dispose() {
+		async dispose() {
 			eventListeners.clear();
-			const cleanupHomeDir = (): void => {
-				if (ownedHomeDir) rmSync(ownedHomeDir, { recursive: true, force: true });
-			};
-			void process.dispose().then(cleanupHomeDir);
+			await process.dispose();
+			if (ownedHomeDir) rmSync(ownedHomeDir, { recursive: true, force: true });
 		},
 	};
 }

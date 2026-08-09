@@ -37,7 +37,7 @@ const events: unknown[] = [];
 proc.onEvent((event) => events.push(event));
 proc.sendPrompt("go");
 await waitForRpcEvent(events, (event) => event.type === "tool_execution_end");
-proc.dispose();
+await proc.dispose();
 ```
 
 For a companion daemon (Epi, or any other real process a test needs alongside

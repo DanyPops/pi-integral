@@ -12,20 +12,19 @@ import { join } from "node:path";
 import { spawnRealPiProcess } from "../src/pi-process.ts";
 
 describe("spawnRealPiProcess environment isolation", () => {
-	it("defaults to a fresh temp home directory, distinct from the real operator's home", () => {
+	it("defaults to a fresh temp home directory, distinct from the real operator's home", async () => {
 		const proc = spawnRealPiProcess({ extraArgs: ["--help"] });
 		expect(proc.homeDir).toBeDefined();
 		expect(proc.homeDir).not.toBe(homedir());
 		expect(existsSync(proc.homeDir!)).toBe(true);
-		proc.dispose();
+		await proc.dispose();
 	});
 
-	it("removes the owned temp home directory on dispose()", async () => {
-		const proc = spawnRealPiProcess({ extraArgs: ["--help"] });
+	it("removes the owned temp home directory before dispose() resolves", async () => {
+		const proc = spawnRealPiProcess();
 		const homeDir = proc.homeDir!;
-		await proc.waitForExit();
-		proc.dispose();
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(existsSync(homeDir)).toBe(true);
+		await proc.dispose();
 		expect(existsSync(homeDir)).toBe(false);
 	});
 
@@ -34,14 +33,14 @@ describe("spawnRealPiProcess environment isolation", () => {
 		const proc = spawnRealPiProcess({ extraArgs: ["--help"], isolatedHome: dir });
 		expect(proc.homeDir).toBe(dir);
 		await proc.waitForExit();
-		proc.dispose();
+		await proc.dispose();
 		expect(existsSync(dir)).toBe(true);
 		rmSync(dir, { recursive: true, force: true });
 	});
 
-	it("has no homeDir when isolation is explicitly disabled", () => {
+	it("has no homeDir when isolation is explicitly disabled", async () => {
 		const proc = spawnRealPiProcess({ extraArgs: ["--help"], isolatedHome: false });
 		expect(proc.homeDir).toBeUndefined();
-		proc.dispose();
+		await proc.dispose();
 	});
 });

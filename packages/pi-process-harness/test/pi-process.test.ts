@@ -36,6 +36,6 @@ describe("spawnRealPiProcess + faux provider", () => {
 			expect(JSON.stringify(end.result)).toContain("hello from the faux model");
 		}
 
-		proc.dispose();
+		await proc.dispose();
 	}, 20_000);
 });
