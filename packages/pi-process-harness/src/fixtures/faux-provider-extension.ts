@@ -11,6 +11,7 @@
 import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { decodeFauxScript, type FauxScriptStep, SCRIPT_ENV_VAR } from "../faux-script.js";
+import { payloadAwareFauxProvider } from "../payload-aware-faux-provider.js";
 
 function toAssistantMessage(step: FauxScriptStep) {
 	return step.type === "text" ? fauxAssistantMessage(fauxText(step.text)) : fauxAssistantMessage(fauxToolCall(step.name, step.arguments));
@@ -23,6 +24,6 @@ export default function (pi: ExtensionAPI): void {
 	}
 	const steps = decodeFauxScript(raw);
 	const handle = fauxProvider();
-	pi.registerProvider(handle.provider);
+	pi.registerProvider(payloadAwareFauxProvider(handle.provider));
 	handle.setResponses(steps.map(toAssistantMessage));
 }

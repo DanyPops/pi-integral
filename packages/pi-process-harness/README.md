@@ -40,6 +40,12 @@ await waitForRpcEvent(events, (event) => event.type === "tool_execution_end");
 await proc.dispose();
 ```
 
+The bundled faux extension is payload-lifecycle aware: it wraps Pi AI's faux provider so
+`before_provider_request` handlers execute at the real provider stream boundary. Because faux has
+no wire protocol, the hook receives a deterministic provider-neutral shape (`system`, `messages`,
+`tools`). Payload rewrites are observational only; provider-specific serialization/rewrite tests
+still require a local HTTP provider fake.
+
 For a companion daemon (Epi, or any other real process a test needs alongside
 the Pi process):
 
@@ -57,9 +63,8 @@ await daemon.dispose();
 
 ## What this does not do
 
-- No sandboxing/isolation of the spawned process -- it's a real child
-  process on this machine with real filesystem/network access, same as any
-  other `child_process.spawn`.
+- No OS sandbox: the harness isolates `HOME` and `PI_CODING_AGENT_DIR` by default, but the real
+  child still has ordinary filesystem/network access like any `child_process.spawn`.
 - No assertion helpers beyond `waitForRpcEvent` -- read the real RPC event
   stream and assert on it directly.
 - Not a replacement for `pi-extension-harness` -- use that for fast,

@@ -6,11 +6,12 @@ import { encodeFauxScript, SCRIPT_ENV_VAR } from "../src/faux-script.ts";
 import { spawnRealPiProcess, waitForRpcEvent } from "../src/pi-process.ts";
 
 const ECHO_EXTENSION = fileURLToPath(new URL("./fixtures/echo-tool-extension.ts", import.meta.url));
+const PAYLOAD_OBSERVER_EXTENSION = fileURLToPath(new URL("./fixtures/provider-payload-observer-extension.ts", import.meta.url));
 
 describe("spawnRealPiProcess + faux provider", () => {
 	it("drives a real AgentSession to genuinely decide to call a real registered tool, no live LLM", async () => {
 		const proc = spawnRealPiProcess({
-			extensions: [resolveFauxProviderExtensionPath(), ECHO_EXTENSION],
+			extensions: [resolveFauxProviderExtensionPath(), ECHO_EXTENSION, PAYLOAD_OBSERVER_EXTENSION],
 			extraArgs: ["--provider", "faux", "--model", "faux-1"],
 			env: {
 				[SCRIPT_ENV_VAR]: encodeFauxScript([{ type: "toolCall", name: "echo_tool", arguments: { message: "hello from the faux model" } }]),
@@ -29,6 +30,11 @@ describe("spawnRealPiProcess + faux provider", () => {
 			},
 		);
 
+		expect(
+			(events as unknown as Array<{ type: string; statusKey?: string }>).some(
+				(event) => event.type === "extension_ui_request" && event.statusKey === "provider-payload-observed",
+			),
+		).toBe(true);
 		expect(end.type).toBe("tool_execution_end");
 		if (end.type === "tool_execution_end") {
 			expect(end.toolName).toBe("echo_tool");
