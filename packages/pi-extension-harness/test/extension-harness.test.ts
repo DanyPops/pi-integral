@@ -425,3 +425,22 @@ describe("reload()", () => {
 		expect(h.notifications).toHaveLength(2);
 	});
 });
+
+describe("pi.sendMessage()", () => {
+	it("records a custom message, distinct from sendUserMessage's own userMessages", () => {
+		const h = createExtensionHarness((pi) => {
+			pi.registerCommand("probe", {
+				handler: async () => {
+					pi.sendMessage({ customType: "my-extension", content: "hello", display: true }, { deliverAs: "followUp" });
+				},
+			});
+		});
+
+		expect(h.sentMessages).toEqual([]);
+		void h.invokeCommand("probe");
+		expect(h.sentMessages).toEqual([
+			{ message: { customType: "my-extension", content: "hello", display: true }, options: { deliverAs: "followUp" } },
+		]);
+		expect(h.userMessages).toEqual([]); // a distinct channel from sendUserMessage -- never cross-recorded
+	});
+});

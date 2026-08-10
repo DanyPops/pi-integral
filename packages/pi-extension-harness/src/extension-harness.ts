@@ -103,6 +103,16 @@ export interface HarnessUserMessage {
 	options?: { deliverAs?: "steer" | "followUp" };
 }
 
+/** A custom message recorded by sendMessage() -- a distinct API/channel from sendUserMessage: it
+ * participates in LLM context but is not "as if typed by the user", and (unlike sendUserMessage,
+ * which always triggers a turn) is gentle by default -- deliverAs "followUp"/"nextTurn" only force
+ * an immediate turn when triggerTurn is explicitly true. */
+export interface HarnessSentMessage {
+	// biome-ignore lint/suspicious/noExplicitAny: mirrors ExtensionAPI.sendMessage's own Pick<CustomMessage, ...> shape without importing it here.
+	message: { customType: string; content: unknown; display: boolean; details?: any };
+	options?: { triggerTurn?: boolean; deliverAs?: "steer" | "followUp" | "nextTurn" };
+}
+
 /** A registered tool (the raw ToolDefinition + a convenience invocation helper). */
 export interface HarnessTool {
 	name: string;
@@ -192,6 +202,9 @@ export interface ExtensionHarness {
 
 	/** All messages sent via pi.sendUserMessage(). */
 	readonly userMessages: HarnessUserMessage[];
+
+	/** All messages sent via pi.sendMessage() -- a distinct channel from sendUserMessage/userMessages. */
+	readonly sentMessages: HarnessSentMessage[];
 
 	/** Tools registered via pi.registerTool(), keyed by name. */
 	readonly tools: Map<string, HarnessTool>;
@@ -329,6 +342,7 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 
 	const notifications: HarnessNotification[] = [];
 	const userMessages: HarnessUserMessage[] = [];
+	const sentMessages: HarnessSentMessage[] = [];
 	const tools = new Map<string, HarnessTool>();
 	const commands: string[] = [];
 	const commandHandlers = new Map<string, (...args: any[]) => any>();
@@ -466,7 +480,13 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		getFlag: () => undefined,
 		registerMessageRenderer: () => {},
 
-		sendMessage: () => {},
+		sendMessage(
+			message: { customType: string; content: unknown; display: boolean; details?: unknown },
+			options?: { triggerTurn?: boolean; deliverAs?: "steer" | "followUp" | "nextTurn" },
+		) {
+			sentMessages.push({ message, options });
+			return Promise.resolve();
+		},
 
 		sendUserMessage(content: string | unknown[], opts?: { deliverAs?: "steer" | "followUp" }) {
 			const text = typeof content === "string" ? content : JSON.stringify(content);
@@ -638,6 +658,7 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		// Clear observable state so the harness is ready for re-use or GC.
 		notifications.length = 0;
 		userMessages.length = 0;
+		sentMessages.length = 0;
 		tools.clear();
 		commands.length = 0;
 		activeTools = [];
@@ -671,6 +692,9 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		},
 		get userMessages() {
 			return userMessages;
+		},
+		get sentMessages() {
+			return sentMessages;
 		},
 		get tools() {
 			return tools;

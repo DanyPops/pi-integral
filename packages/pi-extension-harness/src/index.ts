@@ -4,6 +4,7 @@ export {
 	type ExtensionHarnessOptions,
 	type HarnessLeak,
 	type HarnessNotification,
+	type HarnessSentMessage,
 	type HarnessTool,
 	type HarnessUserMessage,
 	loadExtensionViaJiti,
