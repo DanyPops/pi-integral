@@ -15,7 +15,7 @@
     },
     "packages/pi-extension-harness": {
       "name": "@danypops/pi-extension-harness",
-      "version": "0.6.2",
+      "version": "0.7.0",
       "dependencies": {
         "jiti": "^2.7.0",
       },
