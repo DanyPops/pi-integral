@@ -53,6 +53,11 @@ export interface RealPiProcess {
 	readonly homeDir: string | undefined;
 	sendPrompt(message: string): void;
 	abort(): void;
+	/** Sends any real RpcCommand verbatim -- e.g. {type: "get_entries"} to inspect exactly what a
+	 * background extension (not a prompt/turn) delivered into the session. sendPrompt/abort are
+	 * just this with a fixed command shape; every other documented RPC command (docs/rpc.md) needs
+	 * this generic escape hatch instead of a dedicated method per command. */
+	send(command: RpcCommand): void;
 	readonly stderr: string;
 	readonly exitCode: number | null;
 	onEvent(listener: (event: AgentSessionEvent) => void): () => void;
@@ -138,6 +143,7 @@ export function spawnRealPiProcess(options: SpawnPiProcessOptions = {}): RealPiP
 		abort() {
 			send({ type: "abort" });
 		},
+		send,
 		get stderr() {
 			return process.stderr;
 		},
