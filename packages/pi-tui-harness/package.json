@@ -1,6 +1,6 @@
 {
 	"name": "@danypops/pi-tui-harness",
-	"version": "0.0.2",
+	"version": "0.1.0",
 	"description": "Tests real @earendil-works/pi-tui Component instances without hand-rolled ANSI-stripping regexes: named-key input helpers, and a real VT state machine (@xterm/headless) for structured cell/plain-text assertions and golden-file snapshots -- Ghostty's libghostty-vt testing philosophy applied to Pi's own TUI layer.",
 	"license": "MIT",
 	"type": "module",
