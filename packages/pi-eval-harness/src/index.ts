@@ -6,6 +6,7 @@ export {
 	formatAblation,
 } from "./ablation.js";
 export { all, type Checker, type CheckerContext, type CheckerResult, expectsAll, expectsAny } from "./checker.js";
+export { detectLoop, type LoopDetectionResult, type MistakeSummary, summarizeMistakes } from "./mistakes.js";
 export { describeToolCall, matchesToolCall, type ToolCall } from "./tool-call.js";
 export { extractToolExecutions, type ToolExecution } from "./tool-executions.js";
 export {
