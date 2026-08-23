@@ -48,6 +48,20 @@ would only hide the assertion, not simplify it.
 A `Checker` that only ever gets exercised against a real, expensive `pi-process-harness` run has
 no fast, deterministic proof it is correct in isolation -- write the fixture test first.
 
+## Real live-LLM smoke test (opt-in, real cost -- never run automatically)
+
+`scripts/real-llm-smoke-test.ts` spawns a genuine `pi` process against a real model (no faux
+provider, no scripted tool calls) and runs the captured trace through this package's own
+matching/rollup functions -- confirming they handle a real model's own event shape, not just the
+faux provider's conveniences every other test here relies on. Run explicitly:
+
+```sh
+bun scripts/real-llm-smoke-test.ts
+```
+
+Requires real provider credentials already configured in your own ambient Pi profile (this
+script deliberately runs with `isolatedHome: false`) and incurs a real, billed API call.
+
 ## License
 
 MIT
