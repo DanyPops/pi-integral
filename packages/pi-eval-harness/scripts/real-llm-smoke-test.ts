@@ -30,15 +30,15 @@ async function main(): Promise<void> {
 
 	const adcPath = join(homedir(), ".config", "gcloud", "application_default_credentials.json");
 
-	// isolatedHome: false -- anthropic-vertex is a custom provider registered only in the real
-	// operator's own ambient ~/.pi/agent config, not a built-in Pi provider a fresh isolated home
-	// would know about. This is a deliberate one-off real call, not a repeatable CI-safe test --
-	// see spawnRealPiProcess's own isolatedHome doc comment for why this is almost never the
-	// right default otherwise.
+	// anthropic-vertex is a custom provider from a real npm package (@twogiants/pi-anthropic-vertex),
+	// not a built-in Pi provider -- passed explicitly as an extension so a genuinely isolated home
+	// (no ambient pi-lector or any other real profile extension contaminating a baseline arm) still
+	// recognizes it. Confirmed installed at this real path in the operator's own npm package cache.
+	const VERTEX_PROVIDER_EXTENSION = join(homedir(), ".pi/agent/npm/node_modules/@twogiants/pi-anthropic-vertex/index.ts");
 	const proc = spawnRealPiProcess({
+		extensions: [VERTEX_PROVIDER_EXTENSION],
 		extraArgs: ["--provider", "anthropic-vertex", "--model", "claude-sonnet-5"],
 		cwd,
-		isolatedHome: false,
 		env: { GOOGLE_APPLICATION_CREDENTIALS: adcPath },
 	});
 
