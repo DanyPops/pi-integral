@@ -15,6 +15,8 @@ export interface Turn {
 	readonly tokensIn: number;
 	readonly tokensOut: number;
 	readonly cacheReadTokens: number;
+	/** New context tokens written to the provider's cache this turn -- the other real component of total context size under prompt caching, alongside cacheReadTokens. */
+	readonly cacheWriteTokens: number;
 	/** Real cost in USD from Usage.cost.total, when the provider reports pricing. */
 	readonly costUsd: number;
 	/** Number of tool calls dispatched from this turn. */
@@ -39,6 +41,7 @@ export function deriveTurns(events: readonly AgentSessionEvent[]): Turn[] {
 			tokensIn: usage?.input ?? 0,
 			tokensOut: usage?.output ?? 0,
 			cacheReadTokens: usage?.cacheRead ?? 0,
+			cacheWriteTokens: usage?.cacheWrite ?? 0,
 			costUsd: usage?.cost.total ?? 0,
 			toolCalls: event.toolResults.length,
 			toolNames: event.toolResults.map((result) => result.toolName),
@@ -53,6 +56,7 @@ export interface RunUsageSummary {
 	readonly tokensIn: number;
 	readonly tokensOut: number;
 	readonly cacheReadTokens: number;
+	readonly cacheWriteTokens: number;
 	readonly costUsd: number;
 	readonly toolCalls: number;
 	/** Every tool name called across the whole run, in dispatch order. */
@@ -66,6 +70,7 @@ export function summarizeRunUsage(turns: readonly Turn[]): RunUsageSummary {
 		tokensIn: turns.reduce((sum, turn) => sum + turn.tokensIn, 0),
 		tokensOut: turns.reduce((sum, turn) => sum + turn.tokensOut, 0),
 		cacheReadTokens: turns.reduce((sum, turn) => sum + turn.cacheReadTokens, 0),
+		cacheWriteTokens: turns.reduce((sum, turn) => sum + turn.cacheWriteTokens, 0),
 		costUsd: turns.reduce((sum, turn) => sum + turn.costUsd, 0),
 		toolCalls: turns.reduce((sum, turn) => sum + turn.toolCalls, 0),
 		toolNames: turns.flatMap((turn) => turn.toolNames),

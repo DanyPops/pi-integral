@@ -2,7 +2,17 @@ import { describe, expect, it } from "bun:test";
 import { aggregateTrials, MaxErrorRateExceeded, runTrials, type TrialResult } from "../src/trials.ts";
 
 function trial(overrides: Partial<TrialResult> = {}): TrialResult {
-	return { pass: true, score: 1, durationMs: 100, tokensIn: 10, tokensOut: 5, costUsd: 0.01, ...overrides };
+	return {
+		pass: true,
+		score: 1,
+		durationMs: 100,
+		tokensIn: 10,
+		tokensOut: 5,
+		cacheReadTokens: 0,
+		cacheWriteTokens: 0,
+		costUsd: 0.01,
+		...overrides,
+	};
 }
 
 describe("aggregateTrials", () => {
@@ -35,6 +45,15 @@ describe("aggregateTrials", () => {
 		expect(metrics.meanTokensIn).toBe(20);
 		expect(metrics.meanTokensOut).toBe(10);
 		expect(metrics.meanCostUsd).toBeCloseTo(0.02);
+	});
+
+	it("means real cache read/write tokens across trials -- the dominant real context/cost component under prompt caching", () => {
+		const metrics = aggregateTrials([
+			trial({ cacheReadTokens: 1000, cacheWriteTokens: 200 }),
+			trial({ cacheReadTokens: 3000, cacheWriteTokens: 600 }),
+		]);
+		expect(metrics.meanCacheReadTokens).toBe(2000);
+		expect(metrics.meanCacheWriteTokens).toBe(400);
 	});
 
 	it("throws for an empty trial list rather than producing NaN statistics", () => {

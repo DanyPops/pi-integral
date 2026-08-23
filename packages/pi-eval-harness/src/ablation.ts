@@ -19,6 +19,8 @@ export interface AblationDelta {
 	readonly meanScoreDelta: number;
 	readonly meanDurationMsDelta: number;
 	readonly meanTokensInDelta: number;
+	readonly meanCacheReadTokensDelta: number;
+	readonly meanCacheWriteTokensDelta: number;
 }
 
 /** One config's own trial metrics, plus its delta vs baseline. `delta` is undefined for the baseline itself. */
@@ -55,6 +57,8 @@ export async function ablate(configs: readonly AblationConfig[], n: number, opti
 				meanScoreDelta: metrics.meanScore - baseline.meanScore,
 				meanDurationMsDelta: metrics.meanDurationMs - baseline.meanDurationMs,
 				meanTokensInDelta: metrics.meanTokensIn - baseline.meanTokensIn,
+				meanCacheReadTokensDelta: metrics.meanCacheReadTokens - baseline.meanCacheReadTokens,
+				meanCacheWriteTokensDelta: metrics.meanCacheWriteTokens - baseline.meanCacheWriteTokens,
 			},
 		};
 	});
@@ -71,12 +75,12 @@ export function formatAblation(label: string, results: readonly AblationResult[]
 	for (const result of results) {
 		const m = result.metrics;
 		lines.push(
-			`  ${result.config.name.padEnd(14)}  pass_rate=${m.passRate.toFixed(2)}  mean_score=${m.meanScore.toFixed(2)}  mean_duration_ms=${m.meanDurationMs.toFixed(0)}  tokens_in=${m.meanTokensIn.toFixed(0)}`,
+			`  ${result.config.name.padEnd(14)}  pass_rate=${m.passRate.toFixed(2)}  mean_score=${m.meanScore.toFixed(2)}  mean_duration_ms=${m.meanDurationMs.toFixed(0)}  tokens_in=${m.meanTokensIn.toFixed(0)}  cache_read=${m.meanCacheReadTokens.toFixed(0)}  cache_write=${m.meanCacheWriteTokens.toFixed(0)}`,
 		);
 		if (result.delta) {
 			const d = result.delta;
 			lines.push(
-				`  ${"(vs baseline)".padEnd(14)}  Δpass_rate=${signed(d.passRateDelta, 2)}  Δscore=${signed(d.meanScoreDelta, 2)}  Δduration_ms=${signed(d.meanDurationMsDelta, 0)}  Δtokens_in=${signed(d.meanTokensInDelta, 0)}`,
+				`  ${"(vs baseline)".padEnd(14)}  Δpass_rate=${signed(d.passRateDelta, 2)}  Δscore=${signed(d.meanScoreDelta, 2)}  Δduration_ms=${signed(d.meanDurationMsDelta, 0)}  Δtokens_in=${signed(d.meanTokensInDelta, 0)}  Δcache_read=${signed(d.meanCacheReadTokensDelta, 0)}  Δcache_write=${signed(d.meanCacheWriteTokensDelta, 0)}`,
 			);
 		}
 	}

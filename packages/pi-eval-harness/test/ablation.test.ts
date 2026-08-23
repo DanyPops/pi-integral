@@ -3,7 +3,17 @@ import { ablate, formatAblation } from "../src/ablation.ts";
 import type { TrialResult } from "../src/trials.ts";
 
 function trial(overrides: Partial<TrialResult> = {}): TrialResult {
-	return { pass: true, score: 1, durationMs: 100, tokensIn: 10, tokensOut: 5, costUsd: 0.01, ...overrides };
+	return {
+		pass: true,
+		score: 1,
+		durationMs: 100,
+		tokensIn: 10,
+		tokensOut: 5,
+		cacheReadTokens: 0,
+		cacheWriteTokens: 0,
+		costUsd: 0.01,
+		...overrides,
+	};
 }
 
 describe("ablate", () => {
@@ -47,6 +57,19 @@ describe("ablate", () => {
 		expect(delta?.meanScoreDelta).toBeCloseTo(0.5);
 		expect(delta?.meanTokensInDelta).toBe(-60);
 		expect(delta?.meanDurationMsDelta).toBe(-150);
+	});
+
+	it("computes real cache read/write token deltas -- the dominant real context/cost component under prompt caching", async () => {
+		const results = await ablate(
+			[
+				{ name: "baseline", runOne: async () => trial({ cacheReadTokens: 5000, cacheWriteTokens: 1000 }) },
+				{ name: "with-lector", runOne: async () => trial({ cacheReadTokens: 2000, cacheWriteTokens: 400 }) },
+			],
+			1,
+		);
+		const delta = results[1]?.delta;
+		expect(delta?.meanCacheReadTokensDelta).toBe(-3000);
+		expect(delta?.meanCacheWriteTokensDelta).toBe(-600);
 	});
 
 	it("returns an empty array for no configs", async () => {

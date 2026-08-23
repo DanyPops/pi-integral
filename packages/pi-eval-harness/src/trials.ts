@@ -12,6 +12,9 @@ export interface TrialResult {
 	readonly durationMs: number;
 	readonly tokensIn: number;
 	readonly tokensOut: number;
+	/** Real cache-read/cache-write tokens -- under prompt caching, the dominant real component of total context size; tokensIn alone (a provider's own incremental, non-cached count) understates it. */
+	readonly cacheReadTokens: number;
+	readonly cacheWriteTokens: number;
 	readonly costUsd: number;
 	readonly error?: string;
 }
@@ -28,6 +31,8 @@ export interface TrialMetrics {
 	readonly meanDurationMs: number;
 	readonly meanTokensIn: number;
 	readonly meanTokensOut: number;
+	readonly meanCacheReadTokens: number;
+	readonly meanCacheWriteTokens: number;
 	readonly meanCostUsd: number;
 }
 
@@ -86,6 +91,8 @@ export function aggregateTrials(results: readonly TrialResult[], options: { read
 		meanDurationMs: mean(results.map((result) => result.durationMs)),
 		meanTokensIn: mean(results.map((result) => result.tokensIn)),
 		meanTokensOut: mean(results.map((result) => result.tokensOut)),
+		meanCacheReadTokens: mean(results.map((result) => result.cacheReadTokens)),
+		meanCacheWriteTokens: mean(results.map((result) => result.cacheWriteTokens)),
 		meanCostUsd: mean(results.map((result) => result.costUsd)),
 	};
 }
@@ -119,6 +126,8 @@ export async function runTrials(runOne: () => Promise<TrialResult>, n: number, o
 						durationMs: 0,
 						tokensIn: 0,
 						tokensOut: 0,
+						cacheReadTokens: 0,
+						cacheWriteTokens: 0,
 						costUsd: 0,
 						error: error instanceof Error ? error.message : String(error),
 					};

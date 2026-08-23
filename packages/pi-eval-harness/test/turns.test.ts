@@ -58,6 +58,7 @@ describe("deriveTurns", () => {
 				tokensIn: 100,
 				tokensOut: 20,
 				cacheReadTokens: 0,
+				cacheWriteTokens: 0,
 				costUsd: 0.0015,
 				toolCalls: 2,
 				toolNames: ["search_code", "find_symbols"],
@@ -86,7 +87,7 @@ describe("deriveTurns", () => {
 		];
 
 		expect(deriveTurns(events)).toEqual([
-			{ turn: 1, model: "", tokensIn: 0, tokensOut: 0, cacheReadTokens: 0, costUsd: 0, toolCalls: 0, toolNames: [] },
+			{ turn: 1, model: "", tokensIn: 0, tokensOut: 0, cacheReadTokens: 0, cacheWriteTokens: 0, costUsd: 0, toolCalls: 0, toolNames: [] },
 		]);
 	});
 
@@ -106,12 +107,12 @@ describe("summarizeRunUsage", () => {
 		const turns = deriveTurns([
 			{
 				type: "turn_end",
-				message: assistantMessage({ usage: usage({ input: 100, output: 20 }) }),
+				message: assistantMessage({ usage: usage({ input: 100, output: 20, cacheWrite: 7 }) }),
 				toolResults: [toolResult("search_code")],
 			},
 			{
 				type: "turn_end",
-				message: assistantMessage({ usage: usage({ input: 50, output: 10, cacheRead: 5 }) }),
+				message: assistantMessage({ usage: usage({ input: 50, output: 10, cacheRead: 5, cacheWrite: 3 }) }),
 				toolResults: [toolResult("find_symbols"), toolResult("hover")],
 			},
 		]);
@@ -121,6 +122,7 @@ describe("summarizeRunUsage", () => {
 			tokensIn: 150,
 			tokensOut: 30,
 			cacheReadTokens: 5,
+			cacheWriteTokens: 10,
 			costUsd: 0.003,
 			toolCalls: 3,
 			toolNames: ["search_code", "find_symbols", "hover"],
@@ -133,6 +135,7 @@ describe("summarizeRunUsage", () => {
 			tokensIn: 0,
 			tokensOut: 0,
 			cacheReadTokens: 0,
+			cacheWriteTokens: 0,
 			costUsd: 0,
 			toolCalls: 0,
 			toolNames: [],
