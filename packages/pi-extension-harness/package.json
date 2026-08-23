@@ -12,7 +12,8 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./mock-pi-cli": "./src/mock-pi-cli.mjs"
+    "./mock-pi-cli": "./src/mock-pi-cli.mjs",
+    "./package.json": "./package.json"
   },
   "files": ["src", "dist", "README.md", "LICENSE"],
   "keywords": ["pi", "pi-extension", "testing", "test-harness", "jiti"],
