@@ -1,6 +1,6 @@
 {
 	"name": "@danypops/pi-eval-harness",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Scores a real agent run's own tool-call behavior -- AND/OR tool-call matching, graduated checker composition, and turn/tool-call/token-usage rollups -- over Pi's own real AgentSessionEvent stream (e.g. from @danypops/pi-process-harness).",
 	"license": "MIT",
 	"type": "module",
