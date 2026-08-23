@@ -18,6 +18,9 @@ and real terminal rendering.
   `Component` instances: named-key input helpers, and a real headless VT state machine
   (`@xterm/headless`) for structured cell/plain-text assertions plus golden-file snapshots,
   instead of a hand-rolled ANSI-stripping regex.
+- **[`packages/pi-eval-harness`](packages/pi-eval-harness)** — scores a real agent run's own
+  tool-call behavior over Pi's real `AgentSessionEvent` stream: AND/OR tool-call matching,
+  graduated checker composition, and turn/tool-call/token-usage rollups.
 
 Each package picks the cheapest layer that actually proves the behavior in question; reach for
 the next one only when a test genuinely needs more than the current layer can give.

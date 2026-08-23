@@ -1,0 +1,43 @@
+{
+	"name": "@danypops/pi-eval-harness",
+	"version": "0.1.0",
+	"description": "Scores a real agent run's own tool-call behavior -- AND/OR tool-call matching, graduated checker composition, and turn/tool-call/token-usage rollups -- over Pi's own real AgentSessionEvent stream (e.g. from @danypops/pi-process-harness).",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"sideEffects": false,
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+	},
+	"scripts": {
+		"build": "rm -rf dist && tsc -p tsconfig.build.json",
+		"test": "bun run build && bun test test",
+		"typecheck": "tsc --noEmit",
+		"format": "biome format --write ."
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/DanyPops/pi-integral.git",
+		"directory": "packages/pi-eval-harness"
+	},
+	"homepage": "https://github.com/DanyPops/pi-integral/tree/main/packages/pi-eval-harness#readme",
+	"bugs": {
+		"url": "https://github.com/DanyPops/pi-integral/issues"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": "*"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.6",
+		"@earendil-works/pi-coding-agent": "*",
+		"@types/node": "^22.0.0",
+		"bun-types": "latest",
+		"typescript": "^5.9.2"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": ["src", "dist", "README.md", "LICENSE"],
+	"keywords": ["pi", "pi-extension", "testing", "eval", "agent-evaluation", "tool-call"]
+}
