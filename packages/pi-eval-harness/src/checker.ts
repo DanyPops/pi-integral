@@ -9,9 +9,16 @@ export interface CheckerResult {
 	readonly errors: readonly string[];
 }
 
-/** Runtime context passed to a Checker -- the real completed tool executions from one run. */
+/**
+ * Runtime context passed to a Checker -- the real completed tool executions from one run, plus
+ * (when the run actually had a real workspace directory) its absolute path, for a checker that
+ * verifies real post-run workspace state rather than which tools were called. Optional: a
+ * checker that only inspects `executions` (matching/rollup checks) never needs it, and every
+ * existing construction of this context predates the field.
+ */
 export interface CheckerContext {
 	readonly executions: readonly ToolExecution[];
+	readonly workspace?: string;
 }
 
 /** A pure, deterministic verifier over one run's real tool executions. */
