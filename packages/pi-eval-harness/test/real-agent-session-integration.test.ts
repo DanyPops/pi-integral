@@ -17,6 +17,7 @@ import {
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { expectsAll } from "../src/checker.ts";
 import { extractToolExecutions } from "../src/tool-executions.ts";
+import { deriveTurns, summarizeRunUsage } from "../src/turns.ts";
 
 const SEARCH_LIKE_EXTENSION = fileURLToPath(new URL("./fixtures/search-like-tool-extension.ts", import.meta.url));
 
@@ -49,5 +50,13 @@ describe("pi-eval-harness against a real scripted pi-process-harness run", () =>
 		const checker = expectsAll([{ tool: "search_like_tool", target: { pattern: "foo" }, produces: "1 match" }]);
 		const result = await checker.check({ executions });
 		expect(result).toEqual({ pass: true, score: 1, errors: [] });
+
+		const turns = deriveTurns(events);
+		expect(turns.length).toBeGreaterThan(0);
+		expect(turns.some((turn) => turn.toolNames.includes("search_like_tool"))).toBe(true);
+
+		const usageSummary = summarizeRunUsage(turns);
+		expect(usageSummary.toolCalls).toBeGreaterThan(0);
+		expect(usageSummary.tokensIn).toBeGreaterThanOrEqual(0);
 	}, 20_000);
 });
