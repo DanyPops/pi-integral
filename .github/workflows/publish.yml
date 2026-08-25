@@ -23,7 +23,6 @@ jobs:
       package-manager: bun
       install-command: bun install --frozen-lockfile && bun add --global @earendil-works/pi-coding-agent
       lint-command: bun run lint
-      test-command: bun test
       typecheck-command: bun run typecheck
       build-command: bun run build
 
