@@ -328,6 +328,90 @@ describe("createExtensionHarness", () => {
 		h.api.events.emit("some.channel.v1", 2);
 		expect(received).toEqual([1]);
 	});
+
+	it("attributes factory and handler durations by lifecycle event and registration order", async () => {
+		let clock = 0;
+		const h = createExtensionHarness(
+			(pi) => {
+				pi.on("session_start", async () => {});
+				pi.on("session_start", async () => {});
+				pi.on("resources_discover", async () => ({}));
+			},
+			{ now: () => (clock += 10) },
+		);
+
+		await h.boot();
+		await h.emit("resources_discover", { reason: "startup" });
+
+		expect(h.lifecycleTimings).toEqual([
+			{ phase: "factory", invocation: 0, durationMs: 10, outcome: "success" },
+			{ phase: "handler", event: "session_start", handlerIndex: 0, invocation: 0, durationMs: 10, outcome: "success" },
+			{ phase: "handler", event: "session_start", handlerIndex: 1, invocation: 1, durationMs: 10, outcome: "success" },
+			{ phase: "handler", event: "resources_discover", handlerIndex: 0, invocation: 2, durationMs: 10, outcome: "success" },
+		]);
+	});
+
+	it("records a rejected handler before propagating its error", async () => {
+		let clock = 0;
+		const h = createExtensionHarness(
+			(pi) => {
+				pi.on("custom_event" as never, async () => {
+					throw new Error("boom");
+				});
+			},
+			{ now: () => (clock += 5) },
+		);
+
+		await h.boot();
+		await expect(h.emit("custom_event")).rejects.toThrow("boom");
+		expect(h.lifecycleTimings.at(-1)).toEqual({
+			phase: "handler",
+			event: "custom_event",
+			handlerIndex: 0,
+			invocation: 0,
+			durationMs: 5,
+			outcome: "error",
+		});
+	});
+
+	it("preserves synchronous factory errors at harness construction", () => {
+		const stdoutWrite = process.stdout.write;
+		const consoleError = console.error;
+
+		expect(() =>
+			createExtensionHarness(() => {
+				throw new Error("sync factory failure");
+			}),
+		).toThrow("sync factory failure");
+		expect(process.stdout.write).toBe(stdoutWrite);
+		expect(console.error).toBe(consoleError);
+	});
+
+	it("restores process-global boot state after an asynchronous factory error", async () => {
+		const originalConsoleError = console.error;
+		const envKey = "PI_EXTENSION_HARNESS_BOOT_FAILURE_TEST";
+		const previousEnv = process.env[envKey];
+		let consoleCalls = 0;
+		console.error = () => void consoleCalls++;
+		try {
+			const h = createExtensionHarness(
+				async () => {
+					await Promise.resolve();
+					throw new Error("async factory failure");
+				},
+				{ env: { [envKey]: "temporary" } },
+			);
+
+			await expect(h.boot()).rejects.toThrow("async factory failure");
+			console.error("probe restored console");
+			expect(consoleCalls).toBe(1);
+			expect(process.env[envKey]).toBe(previousEnv);
+		} finally {
+			console.error = originalConsoleError;
+			if (previousEnv === undefined) delete process.env[envKey];
+			else process.env[envKey] = previousEnv;
+		}
+	});
 });
 
 describe("reload()", () => {

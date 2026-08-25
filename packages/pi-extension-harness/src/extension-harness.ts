@@ -119,6 +119,23 @@ export interface HarnessTool {
 	definition: ToolDefinition<any, any, any>;
 }
 
+/** One measured extension lifecycle step. Timings use a caller-injectable monotonic clock. */
+export type HarnessLifecycleTiming =
+	| {
+			readonly phase: "factory";
+			readonly invocation: number;
+			readonly durationMs: number;
+			readonly outcome: "success" | "error";
+	  }
+	| {
+			readonly phase: "handler";
+			readonly event: string;
+			readonly handlerIndex: number;
+			readonly invocation: number;
+			readonly durationMs: number;
+			readonly outcome: "success" | "error";
+	  };
+
 /** Options for createExtensionHarness(). */
 export interface ExtensionHarnessOptions {
 	/** Working directory passed to ExtensionContext.cwd. Default: process.cwd(). */
@@ -180,6 +197,8 @@ export interface ExtensionHarnessOptions {
 	custom?: (factory: (...args: any[]) => any) => any;
 	/** Stub for ctx.mode. Default: "print". */
 	mode?: ExtensionContext["mode"];
+	/** Monotonic clock used by lifecycle profiling. Defaults to performance.now(). */
+	now?: () => number;
 }
 
 /**
@@ -242,6 +261,9 @@ export interface ExtensionHarness {
 
 	/** Every pi.setActiveTools(names) call's argument, in order -- for asserting call count/history, not just the final active set. */
 	readonly activeToolsHistory: string[][];
+
+	/** Factory and event-handler durations in execution order, retained through shutdown so shutdown itself is measurable. */
+	readonly lifecycleTimings: readonly HarnessLifecycleTiming[];
 
 	// ── Lifecycle ───────────────────────────────────────────────────────────
 
@@ -350,6 +372,10 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 	const existingTools = options.existingTools ?? [];
 	const appendedEntries: Array<{ customType: string; data: unknown }> = [];
 	const activeToolsHistory: string[][] = [];
+	const lifecycleTimings: HarnessLifecycleTiming[] = [];
+	const now = options.now ?? (() => performance.now());
+	let factoryInvocation = 0;
+	let handlerInvocation = 0;
 	let activeTools: string[] = [...(options.initialActiveTools ?? existingTools)];
 	let sessionName: string | undefined;
 
@@ -525,20 +551,60 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		events: createEventBus(),
 	} as unknown as ExtensionAPI;
 
-	// Call the factory now so sync extensions register tools immediately.
-	// The returned promise (if any) is awaited in boot() so async extensions
-	// (which use dynamic import inside the factory) are also fully initialised
-	// before session_start fires.
-	const factoryResult = factory(api);
+	function runFactory(): Promise<void> {
+		const invocation = factoryInvocation++;
+		const startedAt = now();
+		try {
+			return Promise.resolve(factory(api)).then(
+				() => {
+					lifecycleTimings.push({ phase: "factory", invocation, durationMs: Math.max(0, now() - startedAt), outcome: "success" });
+				},
+				(error: unknown) => {
+					lifecycleTimings.push({ phase: "factory", invocation, durationMs: Math.max(0, now() - startedAt), outcome: "error" });
+					throw error;
+				},
+			);
+		} catch (error) {
+			lifecycleTimings.push({ phase: "factory", invocation, durationMs: Math.max(0, now() - startedAt), outcome: "error" });
+			throw error;
+		}
+	}
+
+	// Call the factory now so sync extensions register tools immediately. The
+	// promise is retained so boot() still waits for async factory initialization.
+	const factoryResult = runFactory();
 
 	// ── Harness implementation ───────────────────────────────────────────────
 
 	async function emit<R>(event: string, payload: Record<string, unknown> = {}): Promise<R | undefined> {
 		const list = handlers.get(event) ?? [];
 		let result: R | undefined;
-		for (const h of list) {
-			const r = await h({ type: event, ...payload } as any, ctx);
-			if (r !== undefined) result = r as R;
+		for (let handlerIndex = 0; handlerIndex < list.length; handlerIndex++) {
+			const handler = list[handlerIndex]!;
+			const invocation = handlerInvocation++;
+			const startedAt = now();
+			try {
+				const handlerResult = await handler({ type: event, ...payload } as any, ctx);
+				lifecycleTimings.push({
+					phase: "handler",
+					event,
+					handlerIndex,
+					invocation,
+					durationMs: Math.max(0, now() - startedAt),
+					outcome: "success",
+				});
+				if (handlerResult !== undefined) result = handlerResult as R;
+			} catch (error) {
+				lifecycleTimings.push({
+					phase: "handler",
+					event,
+					handlerIndex,
+					invocation,
+					durationMs: Math.max(0, now() - startedAt),
+					outcome: "error",
+				});
+				throw error;
+			}
 		}
 		return result;
 	}
@@ -629,9 +695,20 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 			else process.env[k] = v;
 		}
 		// Await any pending async factory work (e.g. dynamic imports) before
-		// firing session_start. For sync factories factoryResult is undefined.
-		await factoryResult;
-		await emit("session_start", { reason: "startup" });
+		// firing session_start. Roll back process-global interception and env
+		// overrides if startup fails, since callers cannot safely use a harness
+		// whose boot never completed.
+		try {
+			await factoryResult;
+			await emit("session_start", { reason: "startup" });
+		} catch (error) {
+			removeLeakDetectors();
+			for (const [k, v] of Object.entries(savedEnv)) {
+				if (v === undefined) delete process.env[k];
+				else process.env[k] = v;
+			}
+			throw error;
+		}
 	}
 
 	async function reload(): Promise<void> {
@@ -641,8 +718,7 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		commandHandlers.clear();
 		handlers.clear();
 		activeTools = [...(options.initialActiveTools ?? existingTools)];
-		const reloadedFactoryResult = factory(api);
-		await reloadedFactoryResult;
+		await runFactory();
 		await emit("session_start", { reason: "reload" });
 	}
 
@@ -722,6 +798,9 @@ export function createExtensionHarness(factory: ExtensionFactory, options: Exten
 		},
 		get activeToolsHistory() {
 			return activeToolsHistory;
+		},
+		get lifecycleTimings() {
+			return [...lifecycleTimings];
 		},
 		boot,
 		shutdown,
