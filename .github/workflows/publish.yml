@@ -23,8 +23,8 @@ jobs:
       package-manager: bun
       install-command: bun install --frozen-lockfile && bun add --global @earendil-works/pi-coding-agent
       lint-command: bun run lint
-      typecheck-command: bun run typecheck
-      build-command: bun run build
+      typecheck-command: bun run --cwd packages/pi-extension-harness typecheck
+      build-command: bun run --cwd packages/pi-extension-harness build
 
   publish-pi-process-harness:
     if: startsWith(github.ref_name, 'pi-process-harness-v')
