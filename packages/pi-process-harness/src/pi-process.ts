@@ -17,6 +17,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { performance } from "node:perf_hooks";
 import type { AgentSessionEvent, RpcCommand } from "@earendil-works/pi-coding-agent";
 import { createLineSplitter } from "./line-splitter.js";
 import { spawnManagedProcess } from "./managed-process.js";
@@ -47,11 +48,26 @@ export interface SpawnPiProcessOptions {
 	readonly isolatedHome?: string | false;
 }
 
+export interface TimedPiEvent {
+	readonly event: AgentSessionEvent;
+	/** Monotonic milliseconds since spawnRealPiProcess() began spawning this process. */
+	readonly elapsedMs: number;
+}
+
+export interface PiStartupTimingSnapshot {
+	readonly firstStdoutMs?: number;
+	readonly firstEventMs?: number;
+	readonly firstResponseMs?: number;
+}
+
 export interface RealPiProcess {
 	readonly pid: number | undefined;
+	/** Monotonic startup milestones. A response is process responsiveness, not proof every background extension task settled. */
+	readonly startupTiming: PiStartupTimingSnapshot;
 	/** The isolated home directory this process was given, when isolation is active (default). Undefined when `isolatedHome: false`. */
 	readonly homeDir: string | undefined;
-	sendPrompt(message: string): void;
+	/** Sends a prompt and returns its monotonic send time on the same elapsed clock as onTimedEvent(). */
+	sendPrompt(message: string): number;
 	abort(): void;
 	/** Sends any real RpcCommand verbatim -- e.g. {type: "get_entries"} to inspect exactly what a
 	 * background extension (not a prompt/turn) delivered into the session. sendPrompt/abort are
@@ -61,6 +77,8 @@ export interface RealPiProcess {
 	readonly stderr: string;
 	readonly exitCode: number | null;
 	onEvent(listener: (event: AgentSessionEvent) => void): () => void;
+	/** Subscribes to parsed RPC events with their monotonic time since process spawn. */
+	onTimedEvent(listener: (event: TimedPiEvent) => void): () => void;
 	onExit(listener: (code: number | null) => void): () => void;
 	waitForExit(): Promise<number | null>;
 	/** Stops the real Pi process and removes any harness-owned isolated home before resolving. Idempotent. */
@@ -91,6 +109,7 @@ export function waitForRpcEvent(
 }
 
 export function spawnRealPiProcess(options: SpawnPiProcessOptions = {}): RealPiProcess {
+	const startedAt = performance.now();
 	const bin = options.bin ?? "pi";
 	const args: string[] = ["--mode", "rpc", "--no-session"];
 	for (const extension of options.extensions ?? []) args.push("--extension", extension);
@@ -114,13 +133,27 @@ export function spawnRealPiProcess(options: SpawnPiProcessOptions = {}): RealPiP
 	});
 
 	const eventListeners = new Set<(event: AgentSessionEvent) => void>();
+	const timedEventListeners = new Set<(event: TimedPiEvent) => void>();
 	const exitListeners = new Set<(code: number | null) => void>();
+	let firstStdoutMs: number | undefined;
+	let firstEventMs: number | undefined;
+	let firstResponseMs: number | undefined;
+	const elapsed = (): number => Math.max(0, performance.now() - startedAt);
 
 	const lineSplitter = createLineSplitter((line) => {
 		const event = parseRpcLine(line);
-		if (event) for (const listener of eventListeners) listener(event);
+		if (!event) return;
+		const elapsedMs = elapsed();
+		firstEventMs ??= elapsedMs;
+		if ((event as unknown as { type: string }).type === "response") firstResponseMs ??= elapsedMs;
+		for (const listener of eventListeners) listener(event);
+		const timedEvent = { event, elapsedMs };
+		for (const listener of timedEventListeners) listener(timedEvent);
 	});
-	process.onStdout((chunk) => lineSplitter.feed(chunk));
+	process.onStdout((chunk) => {
+		firstStdoutMs ??= elapsed();
+		lineSplitter.feed(chunk);
+	});
 	void process.waitForExit().then((code) => {
 		// A process's very last stdout write may not end in "\n" -- flush whatever line-splitter
 		// still has buffered so it isn't silently lost once the stream truly ends.
@@ -136,9 +169,18 @@ export function spawnRealPiProcess(options: SpawnPiProcessOptions = {}): RealPiP
 		get pid() {
 			return process.pid;
 		},
+		get startupTiming() {
+			return {
+				...(firstStdoutMs === undefined ? {} : { firstStdoutMs }),
+				...(firstEventMs === undefined ? {} : { firstEventMs }),
+				...(firstResponseMs === undefined ? {} : { firstResponseMs }),
+			};
+		},
 		homeDir,
 		sendPrompt(message) {
+			const sentAtMs = elapsed();
 			send({ type: "prompt", message });
+			return sentAtMs;
 		},
 		abort() {
 			send({ type: "abort" });
@@ -154,6 +196,10 @@ export function spawnRealPiProcess(options: SpawnPiProcessOptions = {}): RealPiP
 			eventListeners.add(listener);
 			return () => eventListeners.delete(listener);
 		},
+		onTimedEvent(listener) {
+			timedEventListeners.add(listener);
+			return () => timedEventListeners.delete(listener);
+		},
 		onExit(listener) {
 			exitListeners.add(listener);
 			return () => exitListeners.delete(listener);
@@ -163,6 +209,7 @@ export function spawnRealPiProcess(options: SpawnPiProcessOptions = {}): RealPiP
 		},
 		async dispose() {
 			eventListeners.clear();
+			timedEventListeners.clear();
 			await process.dispose();
 			if (ownedHomeDir) rmSync(ownedHomeDir, { recursive: true, force: true });
 		},

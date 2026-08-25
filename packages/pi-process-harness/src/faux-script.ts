@@ -7,6 +7,8 @@
  */
 
 export const SCRIPT_ENV_VAR = "PI_PROCESS_HARNESS_SCRIPT";
+/** Optional deterministic provider latency before the faux model emits its first event. */
+export const FIRST_TOKEN_DELAY_ENV_VAR = "PI_PROCESS_HARNESS_FIRST_TOKEN_DELAY_MS";
 
 export interface FauxTextStep {
 	readonly type: "text";

@@ -7,6 +7,14 @@ import {
 	type Provider,
 	type SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
+import { FIRST_TOKEN_DELAY_ENV_VAR } from "./faux-script.js";
+
+function firstTokenDelay(): Promise<void> {
+	const milliseconds = Number(process.env[FIRST_TOKEN_DELAY_ENV_VAR] ?? "0");
+	return Number.isFinite(milliseconds) && milliseconds > 0
+		? new Promise((resolve) => setTimeout(resolve, milliseconds))
+		: Promise.resolve();
+}
 
 /**
  * Adds the provider-payload lifecycle seam to pi-ai's in-memory faux provider.
@@ -38,6 +46,7 @@ export function payloadAwareFauxProvider<TApi extends Api>(provider: Provider<TA
 					// Mirrors Pi's extension-runner isolation: observational hook failures cannot break faux.
 				}
 				const { onPayload: _onPayload, ...delegatedOptions } = options ?? {};
+				await firstTokenDelay();
 				const delegated = stream(model, context, delegatedOptions as ApiStreamOptions<T>);
 				for await (const event of delegated) outer.push(event);
 			});
@@ -52,6 +61,7 @@ export function payloadAwareFauxProvider<TApi extends Api>(provider: Provider<TA
 					// Mirrors Pi's extension-runner isolation: observational hook failures cannot break faux.
 				}
 				const { onPayload: _onPayload, ...delegatedOptions } = options ?? {};
+				await firstTokenDelay();
 				const delegated = streamSimple(model, context, delegatedOptions as SimpleStreamOptions);
 				for await (const event of delegated) outer.push(event);
 			});
