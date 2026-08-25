@@ -1,6 +1,6 @@
 {
   "name": "@danypops/pi-extension-harness",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "A lightweight, in-process test host for Pi extensions -- unit-test hooks, tools, and commands without booting a real AgentSession, LLM, or I/O. Analogous to ESLint's RuleTester: ships the testing primitives so extension authors stop hand-rolling ad-hoc fake ExtensionAPI objects.",
   "type": "module",
   "license": "MIT",
